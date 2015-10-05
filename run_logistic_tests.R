@@ -13,6 +13,7 @@ logistic.obj <- MakeADFun(data=logistic.data, parameters=logistic.pars, DLL='log
 logistic.obj$env$beSilent()
 logistic.obj$fn(logistic.pars)
 logistic.obj$fn(c(log(.1), log(1000)))
+logistic.obj$fn(c(log(.01), log(1000)))
 opt <- do.call(optim, logistic.obj)
 
 ## explore surface to see how errors are thrown
@@ -71,29 +72,27 @@ run_simulation <- function(model, obj, covar, nsim, seeds.vec, alpha.vec, eps.ve
             ldply(L.vec, function(L)
                 ldply(eps.vec, function(eps)
                     run_hmc(obj=obj, nsim=nsim, L=L, eps=eps, seed=seed, covar=cov)))))
-    ## nuts.perf <- ldply(seeds.vec, function(seed)
-    ##     ldply(covar.list, function(cov)
-    ##         ldply(delta.vec, function(delta)
-    ##             run_nuts(obj=obj, nsim=nsim, seed=seed, covar=cov,
-    ##                      Madapt=Madapt, delta=delta, max_doublings=4))))
-    nuts.perf <- NULL
+    nuts.perf <- ldply(seeds.vec, function(seed)
+        ldply(covar.list, function(cov)
+            ldply(delta.vec, function(delta)
+                run_nuts(obj=obj, nsim=nsim, seed=seed, covar=cov,
+                         Madapt=Madapt, delta=delta, max_doublings=4))))
     hmc.perf$algorithm <- paste(hmc.perf$algorithm, hmc.perf$L, sep="_")
     hmc.perf$L <- NULL
     perf <- cbind(model=model, rbind(rwm.perf, hmc.perf, nuts.perf))
     return(perf)
 }
 
-
 logistic.obj$hessian <- TRUE
 logistic.opt <- do.call('optim', logistic.obj)
 logistic.covar <- solve(logistic.opt$hessian)
 nstep <- 10
-eps.vec <- seq(.005, .006, len=nstep)
+eps.vec <- seq(.005, .5, len=nstep)
 seeds.vec <- c(1,60, 40124,434, 34)[1]
 alpha.vec <- seq(.3, 4, len=nstep)
 delta.vec <- seq(.1,.4, len=nstep)[1]
-L.vec <- c(1,5, 25)
-nsim <- 5000
+L.vec <- c(1,5, 15)
+nsim <- 1000
 logistic.perf <- run_simulation(model='logistic', obj=logistic.obj, covar=logistic.covar,
                nsim=nsim, seeds.vec=seeds.vec, alpha.vec=alpha.vec,
                eps.vec=eps.vec, delta.vec=delta.vec, L.vec=L.vec)
@@ -101,7 +100,7 @@ ggplot(logistic.perf, aes(x=tuning, y=time, group=covar, color=covar))+geom_line
     facet_grid(model~algorithm, scales='free')
 ggplot(logistic.perf, aes(x=tuning, y=minESS, group=covar, color=covar))+geom_line()+ geom_point(size=.5)+
     facet_grid(model~algorithm, scales='free')
-ggplot(logistic.perf, aes(x=tuning, y=perf, group=covar, color=covar))+geom_line()+ geom_point(size=.5)+
+ggplot(logistic.perf, aes(x=log(tuning), y=perf, group=covar, color=covar))+geom_line()+ geom_point(size=.5)+
     facet_grid(model~algorithm, scales='free')
 
 

@@ -26,24 +26,18 @@ Type objective_function<Type>::operator() ()
   vector<Type> temp(num_years);
   for(int t=1; t<num_years; t++){
     temp(t)=N(t-1)+exp(logr)*N(t-1)*(1-N(t-1)/exp(logK))-catches(t-1);
-    // hack way to do posfun for now
+    // use posfun to keep from going negative
     N(t)=posfun(temp(t), eps, pen);
-    // if(N(t) < eps){
-    //   pen+=0.1*pow(N(t)-1,2);
-    //   N(t)=eps/(2.0-N(t)/eps);
-    // }
-    //    if(N(t)<=0) N(t)=1;// std::cout << t << " negative \n";
     if(j<num_obs){
       if(years_obs(j)==t){
-	//if(t==85) std::cout << N(t) << " " << pop_obs(j) << "\n";
 	nll-=dnorm(log(pop_obs(j)), log(N(t)), sd_obs, true);
 	j++;
       }
     }
   }
   // add priors
-  nll-=dnorm(exp(logK), Type(5000), Type(1000));
-  nll-=dnorm(exp(logr), Type(.1), Type(.02));
+  // nll-=dnorm(exp(logK), Type(5000), Type(1000));
+  // nll-=dnorm(exp(logr), Type(.1), Type(.02));
   REPORT(N);
   REPORT(pen);
   REPORT(nll);
