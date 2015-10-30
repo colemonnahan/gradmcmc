@@ -17,7 +17,7 @@ make.covar <- function(d, covar){
 library(TMB)
 library(ggplot2)
 library(plyr)
-library(coda)
+## library(coda)
 ## library(snowfall)
 ## cores <- 4
 ## sfInit(parallel=TRUE, cpus=cores, type='SOCK')

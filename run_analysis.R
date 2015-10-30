@@ -6,7 +6,9 @@
 
 ### ------------------------------------------------------------
 ### Step 0: prepare working space
-devtools::install('../adcomp/TMB')
+## To reinstall TMB locally, go to that folder and run 'make install' from
+## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
+## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
 ### End of Step 0.
 ### ------------------------------------------------------------
@@ -40,13 +42,46 @@ model <- 'mvn'
 setwd(model)
 compile(paste0(model, '.cpp'))
 dyn.load(dynlib(model))
-covar.temp <- 0
 d <- 5
-mvn.covar <- make.covar(d=d, covar=covar.temp)
-data.TMB <- list(d=d, covar=make.covar(d=d, covar=covar.temp))
+set.seed(1)
+mvn.covar <- rWishart(n=1, df=d, Sigma=diag(d))[,,1]
+data.TMB <- list(d=d, covar=mvn.covar)
 parameters.TMB <- list(X=rep(0, times=d))
 mvn.obj <- MakeADFun(data=data.TMB, parameters=parameters.TMB, DLL=model)
 mvn.obj$env$beSilent()
+mvn.opt <- optim(mvn.obj$par, mvn.obj$fn, mvn.obj$gr, hessian=TRUE)
+solve(mvn.opt$hessian) - mvn.covar
+
+## Basic tests of algorithms
+library(TMB)
+mvn.rwm <- mcmc(mvn.obj, nsim=5000, algorithm='RWM', diagnostic=TRUE)
+mvn.hmc <- mcmc(mvn.obj, nsim=5000, L=16, algorithm='HMC', eps=NULL, diagnostic=TRUE)
+## The trace of eps
+with(mvn.hmc, plot(epsbar))
+mvn.nuts <- mcmc(mvn.obj, nsim=5000, algorithm='NUTS', eps=NULL, diagnostic=TRUE, max_doublings=4)
+with(mvn.nuts, plot(epsbar))
+mvn.rwm2 <- mcmc(mvn.obj, nsim=5000, algorithm='RWM', diagnostic=TRUE, covar=mvn.covar)
+mvn.hmc2 <- mcmc(mvn.obj, nsim=5000, L=16, algorithm='HMC', eps=NULL, diagnostic=TRUE, covar=mvn.covar)
+mvn.nuts2 <- mcmc(mvn.obj, nsim=5000, algorithm='NUTS', eps=NULL, diagnostic=TRUE, max_doublings=4, covar=mvn.covar)
+
+
+## See how they compare via ACF
+par(mfrow=c(3,5))
+for(i in 1:5) acf(mvn.rwm$par[,i])
+for(i in 1:5) acf(mvn.hmc$par[,i])
+for(i in 1:5) acf(mvn.nuts$par[,i])
+
+## See how they compare via ACF
+par(mfrow=c(3,5))
+for(i in 1:5) acf(mvn.rwm2$par[,i])
+for(i in 1:5) acf(mvn.hmc2$par[,i])
+for(i in 1:5) acf(mvn.nuts2$par[,i])
+
+par(mfrow=c(3,5))
+for(i in 1:5) {qqplot(mvn.rwm$par[,i], mvn.rwm2$par[,i]);abline(a=0,b=1)}
+for(i in 1:5) {qqplot(mvn.hmc$par[,i], mvn.hmc2$par[,i]);abline(a=0,b=1)}
+for(i in 1:5) {qqplot(mvn.nuts$par[,i], mvn.nuts2$par[,i]);abline(a=0,b=1)}
+
 
 nsim.seq <- 2^(4:18)
 speed.tests <-
@@ -54,15 +89,15 @@ speed.tests <-
           ldply(nsim.seq, function(x) {
   ## a max_doubling of 5 means 32 steps, so adjusting HMC and RWM
   ## accordingly to make them more comparable for this purpose
-  xx <- run_mcmc(obj=mvn.obj, nsim=x, algorithm='NUTS', diag=TRUE, max_doubling=5,
+  xx <- mcmc(obj=mvn.obj, nsim=x, algorithm='NUTS', diag=TRUE, max_doubling=5,
                  delta=.5, Madapt=1, eps=.8, covar=cov)
   x1 <- data.frame(alg='NUTS', nsim=x, time=xx$time, n.calls=xx$n.calls,
                    time.per.call=xx$time/xx$n.calls, covar=!is.null(cov))
-  xx <- run_mcmc(obj=mvn.obj, nsim=x, algorithm='HMC', diag=TRUE, L=32,
+  xx <- mcmc(obj=mvn.obj, nsim=x, algorithm='HMC', diag=TRUE, L=32,
                  eps=.8, covar=cov)
   x2 <- data.frame(alg='HMC', nsim=x, time=xx$time, n.calls=xx$n.calls,
                    time.per.call=xx$time/xx$n.calls, covar=!is.null(cov))
-  xx <- run_mcmc(obj=mvn.obj, nsim=32*x, algorithm='RWM', diag=TRUE,
+  xx <- mcmc(obj=mvn.obj, nsim=32*x, algorithm='RWM', diag=TRUE,
                  alpha=.5, covar=cov)
   x3 <- data.frame(alg='RWM', nsim=x, time=xx$time, n.calls=xx$n.calls,
                    time.per.call=xx$time/xx$n.calls, covar=!is.null(cov))
@@ -87,17 +122,100 @@ ggplot(speed.tests.normalized, aes(log2(nsim), ratio, group=alg, color=alg))+
 
 ## Profiling over NUTS since it is so slow
 Rprof()
-xx <- run_mcmc(obj=mvn.obj, nsim=100, algorithm='NUTS', diag=TRUE, max_doubling=5,
+xx <- mcmc(obj=mvn.obj, nsim=100, algorithm='NUTS', diag=TRUE, max_doubling=5,
                delta=.5, Madapt=1, eps=.8, covar=NULL)
-xx <- run_mcmc(obj=mvn.obj, nsim=10, algorithm='RWM', diag=TRUE, alpha=.01,
+xx <- mcmc(obj=mvn.obj, nsim=10, algorithm='RWM', diag=TRUE, alpha=.01,
                covar=NULL)
-xx <- run_mcmc(obj=mvn.obj, nsim=10, algorithm='RWM', diag=TRUE, alpha=.01,
+xx <- mcmc(obj=mvn.obj, nsim=10, algorithm='RWM', diag=TRUE, alpha=.01,
                covar=mvn.covar)
 
 Rprof(NULL)
 summaryRprof()
 
 x
+
+
+## We can give the algorithms information about the covariance of the
+## posterior to try and improve performance
+covar <- as.matrix(cov(nuts$par))
+rwm2 <- mcmc(obj=obj, nsim=500*8, algorithm='RWM', params.init=opt$par,
+            alpha=1, diagnostic=TRUE, covar=covar)
+rwm2$par <- rwm2$par[seq(1, nrow(rwm2$par), by=8),]
+hmc2 <- mcmc(obj=obj, nsim=500, algorithm='HMC', L=8, params.init=opt$par,
+            diagnostic=TRUE, covar=covar, eps=1)
+nuts2 <- mcmc(obj=obj, nsim=500, algorithm='NUTS', params.init=opt$par,
+             diagnostic=TRUE, covar=covar, eps=.1)
+
+## See how they compare via ACF
+par(mfrow=c(3,4))
+for(i in 1:4) acf(rwm2$par[,i])
+for(i in 1:4) acf(hmc2$par[,i])
+for(i in 1:4) acf(nuts2$par[,i])
+
+## also look at effective size per time
+min(coda::effectiveSize(rwm2$par))/rwm2$time
+min(coda::effectiveSize(hmc2$par))/hmc2$time
+min(coda::effectiveSize(nuts$par))/nuts$time
+
+
+### ------------------------------------------------------------
+## Try again but without the Laplace approximation to integrate out the
+## random effects (u).
+obj <- MakeADFun(data=list(x=x, B=B, A=A),
+                 parameters=list(u=u*0, beta=beta*0, logsdu=1, logsd0=1),
+                 DLL="simple",
+                 silent=TRUE)
+opt <- nlminb(obj$par, obj$fn, obj$gr)
+
+## Run RWM and two gradient based algorithms, using adative step size (eps)
+## for each. Start from the MLE.
+rwm <- mcmc(obj=obj, nsim=5000*8, algorithm='RWM', params.init=opt$par,
+            alpha=.00005, diagnostic=TRUE)
+hmc <- mcmc(obj=obj, nsim=5000, algorithm='HMC', L=8, params.init=opt$par,
+            diagnostic=TRUE)
+nuts <- mcmc(obj=obj, nsim=5000, algorithm='NUTS', params.init=opt$par,
+             diagnostic=TRUE)
+## Thin it to better approximate the gradient methods
+rwm$par <- rwm$par[seq(1, nrow(rwm$par), by=8),]
+plot(nuts$par[,117])
+plot(rwm$par[,117])
+
+
+## See how they compare via ACF
+par(mfrow=c(3,5))
+for(i in 114:118) acf(rwm$par[,i])
+for(i in 114:118) acf(hmc$par[,i])
+for(i in 114:118) acf(nuts$par[,i])
+
+barplot(coda::effectiveSize(rwm$par))
+
+## also look at effective size per time
+min(coda::effectiveSize(rwm$par))/rwm$time
+min(coda::effectiveSize(hmc$par))/hmc$time
+min(coda::effectiveSize(nuts$par))/nuts$time
+
+## We can give the algorithms information about the covariance of the
+## posterior to try and improve performance
+covar <- as.matrix(cov(nuts$par))
+rwm2 <- mcmc(obj=obj, nsim=500*8, algorithm='RWM', params.init=opt$par,
+            alpha=.1, diagnostic=TRUE, covar=covar)
+rwm2$par <- rwm2$par[seq(1, nrow(rwm2$par), by=8),]
+hmc2 <- mcmc(obj=obj, nsim=500, algorithm='HMC', L=8, params.init=opt$par,
+            diagnostic=TRUE, covar=covar)
+nuts2 <- mcmc(obj=obj, nsim=500, algorithm='NUTS', params.init=opt$par,
+             diagnostic=TRUE, covar=covar, eps=0.5)
+
+## See how they compare via ACF
+## See how they compare via ACF
+par(mfrow=c(3,5))
+for(i in 114:118) acf(rwm2$par[,i])
+for(i in 114:118) acf(hmc2$par[,i])
+for(i in 114:118) acf(nuts2$par[,i])
+
+## also look at effective size per time
+min(coda::effectiveSize(rwm2$par))/rwm2$time
+min(coda::effectiveSize(hmc2$par))/hmc2$time
+min(coda::effectiveSize(nuts$par))/nuts$time
 
 
 
@@ -157,5 +275,7 @@ x
 ## library(microbenchmark)
 ## obj$env$beSilent()
 ## microbenchmark(obj$fn(opt$par), obj$gr(opt$par))
+
+
 
 
