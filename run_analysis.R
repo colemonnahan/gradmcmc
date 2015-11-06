@@ -10,8 +10,18 @@
 ## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
 ## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
+library(rstan)
 ### End of Step 0.
 ### ------------------------------------------------------------
+
+## Parameters for the short chains, long ones (to verify models are the
+## same) are specified in each file and differ.
+n.out1 <- 1000
+n.thin1 <- 1
+n.chains1 <- 1
+n.iter1 <- 1.25*n.out*n.thin
+n.burnin1 <- .2*n.iter
+
 
 ### ------------------------------------------------------------
 ### Step 1: Run examples to generate data. These are dropped in the resutls
@@ -34,6 +44,8 @@ source('generate.data.R')
 ### Step 4: Create plots, figures, and tables
 ### End of Step 2.
 ### ------------------------------------------------------------
+
+
 
 ### ------------------------------------------------------------
 ## Development code

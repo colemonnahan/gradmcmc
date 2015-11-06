@@ -17,6 +17,9 @@ make.covar <- function(d, covar){
 library(TMB)
 library(ggplot2)
 library(plyr)
+library(rstan)
+library(R2jags)
+
 ## library(coda)
 ## library(snowfall)
 ## cores <- 4
