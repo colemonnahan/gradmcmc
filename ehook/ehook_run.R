@@ -25,22 +25,22 @@ n.chains1 <- 1
 n.iter1 <- 1.25*n.out1*n.thin1
 n.burnin1 <- .2*n.iter1
 
-n.out2 <- 1000
-n.thin2 <- 100
-n.chains2 <- 1
-n.iter2 <- 1.25*n.out2*n.thin2
-n.burnin2 <- .2*n.iter2
+n.out.ind <- 1000
+n.thin.ind <- 1000
+n.chains.ind <- 4
+n.iter.ind <- 1.25*n.out.ind*n.thin.ind
+n.burnin.ind <- .2*n.iter.ind
 
 ### ------------------------------------------------------------
 ## Run the JAGS models
 data.jags <-
     list(log_yobs=log.yobs, group=group, Nobs=Nobs, Ngroup=Ngroup, day=day,
          spacing=spacing)
-params.to.save.jags <-
+params.jags <-
     c("logcpue_mean", "logcpue_sd", "logsigma_obs", "gamma", "logcpue",
       "sigma_obs_mean", "sigma_obs_sd", "beta")
 ## JAGS models
-mod.jags <- function(){
+model.jags <- function(){
 ### The Hamley and Skud formula with a random effect on CPUE. Here there is
 ### a random effect on the observation error
     ## hyperpriors
@@ -51,34 +51,31 @@ mod.jags <- function(){
     beta~dunif(0,10)
     ## priors
     gamma~dunif(0,1)                   # Impact of day on CPUE
-    ## The precision params
-    logcpue_tau <- pow(logcpue_sd, -2)
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Ngroup){
-        logcpue[i]~dnorm(logcpue_mean, logcpue_tau)
-        cpue[i] <- exp(logcpue[i])
+        logcpue[i]~dnorm(logcpue_mean, pow(logcpue_sd, -2))
         logsigma_obs[i]~dnorm(sigma_obs_mean, pow(sigma_obs_sd, -2))
-        sigma_obs[i] <- exp(logsigma_obs[i])
-        obs_tau[i] <- pow(sigma_obs[i], -2)
     }
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
-        ## The predicted values
-        ypred[i] <- cpue[group[i]]*exp(-day[i]*gamma)*(1-exp(-beta*spacing[i]))
+        ypred[i] <- exp(logcpue[group[i]])*exp(-day[i]*gamma)*(1-exp(-beta*spacing[i]))
         ## Likelihood of data
-        log_yobs[i]~dnorm(log(ypred[i]), obs_tau[group[i]])
+        log_yobs[i]~dnorm(log(ypred[i]), pow(exp(logsigma_obs[group[i]]), -2))
     }
 }
 
-## results1.jags.list <- jags(data=data.jags, parameters.to.save=params.to.save.jags,
-##                            model.file=mod.jags, n.chains=n.chains1, n.iter=n.iter1,
-##                            n.burnin=n.burnin1, n.thin=n.thin1)
-## saveRDS(results1.jags.list, file='results/results1.jags.list.RDS')
-results2.jags.list <- jags(data=data.jags, parameters.to.save=params.to.save.jags,
-                           model.file=mod.jags, n.chains=n.chains2, n.iter=n.iter2,
-                           n.burnin=n.burnin2, n.thin=n.thin2)
-saveRDS(results2.jags.list, file='results/results2.jags.list.RDS')
+## Run a long chain with thinning to get independent samples to make sure
+## the models are matching.
+results.jags.independent <- jags(data=data.jags, parameters.to.save=params.jags,
+                           model.file=model.jags, n.chains=n.chains.ind, n.iter=n.iter.ind,
+                           n.burnin=n.burnin.ind, n.thin=n.thin.ind)
+saveRDS(results.jags.independent, file='results/results.jags.independent.RDS')
+
+results.jags <- jags(data=data.jags, parameters.to.save=params.to.save.jags,
+                           model.file=mod.jags, n.chains=n.chains1, n.iter=n.iter1,
+                           n.burnin=n.burnin1, n.thin=n.thin1)
+saveRDS(results1.jags, file='results/results1.jags.RDS')
 
 
 ## End of JAGS runs for this model
@@ -93,11 +90,16 @@ data.stan <-
 ## sensible speed comparisons
 ##if(!exists('stan.model'))
 stan.model <- stan(file='ehook.stan', data=data.stan, iter=1, chains=1, init=list(inits))
-results1.stan.list <-
+results1.stanHMC1 <-
     stan(fit=stan.model, data=data.stan, iter=1000, warmup=50,
          chains=n.chains1, thin=1, algorithm='HMC', init=list(inits),
          seed=11212, control=list(adapt_engaged=TRUE, int_time=15))
-saveRDS(results1.stan.list, file='results/results1.stan.list.RDS')
+
+results2.stan <-
+    stan(fit=stan.model, data=data.stan, iter=1000, warmup=50,
+         chains=n.chains2, thin=1, algorithm='HMC', init=list(inits),
+         seed=11212, control=list(adapt_engaged=TRUE, int_time=15))
+saveRDS(results1.stan, file='results/results1.stan.RDS')
 
 
 
