@@ -1,9 +1,6 @@
 ## An analysis of the Hamley and Skud (1978) data on the effect of hook
 ## spacing.
 
-## The parameters for the short chain
-
-
 ## The original data, to be processed into the correct format for each
 ## model below
 hs <- read.csv('data/hs_data.csv')
@@ -16,6 +13,12 @@ log.yobs <- log(yobs+.1)
 Nobs <- length(yobs)
 Ngroup <- length(unique(group))
 day <- hs$daynumber
+
+## Got some reasonable values from an initial run
+inits <- list(beta=.1, gamma=.05, logcpue=rep(1,len=Ngroup),
+              logcpue_mean=.2, logcpue_sd=.5, logsigma_obs=rep(-.5, len=Ngroup),
+              sigma_obs_mean=-.5, sigma_obs_sd=.3)
+
 
 ## These are global parameters. Each software platform specifies them
 ## slightly different so see the function calls.
@@ -102,5 +105,43 @@ results2.stan <-
 saveRDS(results1.stan, file='results/results1.stan.RDS')
 
 
+### ------------------------------------------------------------
+## devtools::install_github('kaskr/adcomp/TMB')
+library(TMB)
+## TMB runs
+data.tmb <-
+    list(Ngroup=Ngroup, Nobs=Nobs,log_yobs=log.yobs, group=group, day=day,
+         spacing=spacing)
+data.tmb$group <- data.tmb$group-1
+## Need to massage inits b/c of transformed parameters
+inits.tmb <- inits
+boundpinv <- function(x, min, max){
+    -log( (max-min)/(x-min) -1)
+}
+inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -5, 5)
+inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0, 5)
+inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -5, 5)
+inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, 0,5)
+inits.tmb$beta2= boundpinv(inits.tmb$beta, 0,10)
+inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0,1)
+inits.tmb$logcpue_mean=NULL
+inits.tmb$logcpue_sd=NULL
+inits.tmb$sigma_obs_mean=NULL
+inits.tmb$sigma_obs_sd=NULL
+inits.tmb$beta=NULL
+inits.tmb$gamma=NULL
 
+## Need to reorder parameter list for TMB.
 
+pars <- c("beta2","gamma2","logcpue", "logcpue_mean2","logcpue_sd2",
+          "logsigma_obs", "sigma_obs_mean2", "sigma_obs_sd2" )
+inits.tmb <- inits.tmb[pars]
+compile("ehook.cpp")
+dyn.load(TMB::dynlib("ehook"))
+tmb.model <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
+tmb.model.opt <- do.call(optim, tmb.model)
+
+results.tmb.independent <-
+    TMB::mcmc(obj=tmb.model, nsim=1500, algorithm='NUTS', Madapt=500 )
+results.tmb.independent$LP <- -apply(results.tmb.independent, 1, tmb.model$fn)
+saveRDS(results.tmb.independent, file='results/results.tmb.independent.RDS')
