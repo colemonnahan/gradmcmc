@@ -1,5 +1,6 @@
 ## This assumes the working directory is in the same folder as this file.
-main.dir <- paste0(getwd(), '/')
+## main.dir <- paste0(getwd(), '/')
+main.dir <- 'C:/Users/Cole/gradmcmc/'
 results.file <- function(file) paste0(main.dir,'results/', file)
 plots.file <- function(file) paste0(main.dir,'plots/', file)
 figures.file <- function(file) paste0(main.dir,'paper/figures/', file)
@@ -14,23 +15,47 @@ make.covar <- function(d, covar){
     x
 }
 ## load libraries and such
+library(coda)
 library(TMB)
 library(ggplot2)
 library(plyr)
 library(rstan)
 library(R2jags)
+library(snowfall)
 
-## library(coda)
-## library(snowfall)
-## cores <- 4
-## sfInit(parallel=TRUE, cpus=cores, type='SOCK')
-## sfLibrary(TMB)
-## wrapper <- function(eps){
-##     run_mcmc(mvn.obj, nsim=nsim, algorithm="HMC", L=L,
-##              eps=eps, params.init=mvn.opt$par,
-##              diagnostic=TRUE)
-## }
-## sfExport('run_mcmc', namespace='TMB')
-## mvn.hmc.list <- sfLapply(eps.vec, function(x)  run_mcmc(mvn.obj, nsim=nsim, algorithm="HMC", L=L,
-##              eps=x, params.init=mvn.opt$par,
-##              diagnostic=TRUE))
+## wrappers to run chains and return ESS and other metrics
+run_hmc <- function(obj, nsim, eps, L, covar=NULL, seed=NULL, diag=FALSE){
+    if(!is.null(seed)) set.seed(seed)
+    x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="HMC", L=L,
+                    eps=eps, diagnostic=TRUE, covar=covar, Madapt=Madapt)
+    ## discard the warmup
+    par <- x1$par[-(1:Madapt),]
+    minESS <- min(as.vector(coda::effectiveSize(par)))
+    x2 <- data.frame(covar=!is.null(covar), tuning=eps, algorithm='hmc', L=L, seed=seed,
+                     time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
+                     perf=log10(x1$time/minESS))
+    if(diag) return(x1) else return(x2)
+}
+run_nuts <- function(obj, nsim, inits=NULL, covar=NULL, delta, seed=NULL,
+                     Madapt, diag=FALSE, max_doubling=4){
+    if(!is.null(seed)) set.seed(seed)
+    x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="NUTS", diagnostic=TRUE, max_doubling=max_doubling,
+                   covar=covar, delta=delta, Madapt=Madapt, params.init=inits)
+    ## discard the warmup
+    par <- x1$par[-(1:Madapt),]
+    minESS <- min(as.vector(coda::effectiveSize(par)))
+    x2 <- data.frame(covar=!is.null(covar), tuning=delta, algorithm='nuts',
+                     seed=seed, time=x1$time, minESS=minESS, acceptance=NA,
+                     perf=log10(x1$time/minESS))
+    if(diag) return(x1) else return(x2)
+}
+run_rwm <- function(obj, nsim, alpha, covar, seed=NULL, ...){
+    if(!is.null(seed)) set.seed(seed)
+    x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="RWM", diagnostic=TRUE,
+                   covar=covar, alpha=alpha, ...)
+    minESS <- min(as.vector(coda::effectiveSize(x1$par)))
+    x2 <- data.frame(covar=!is.null(covar), tuning=alpha, algorithm='rwm', seed=seed,
+                     time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
+                     perf=log10(x1$time/minESS))
+    return(x2)
+}

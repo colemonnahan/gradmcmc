@@ -40,36 +40,55 @@ for(i in 1:ncol(results1.stan)){
 
 ## TMB results. these need to be processed manaully for the bounded
 ## parameters internally.
-results.tmb.independent <- readRDS(file='results/results.tmb.independent.RDS')
-## remove the warmup samples
-results.tmb.independent <- results.tmb.independent[-(1:500),]
+results.tmb.ind <- readRDS(file='results/results.tmb.ind.RDS')
+## Look at pairs MLE covariance for long run.
+mle2 <- list()
+mle2$std <- 1*sqrt(diag(covar.tmb))
+mle2$cor <- covar.tmb/ (sqrt(diag(covar.tmb)) %o% sqrt(diag(covar.tmb)))
+mle2$nopar <- 34
+mle2$names <- names(model.tmb$par)
+mle2$est <- model.tmb.opt$par
+xx <- results.tmb.ind
+xx$seed <- xx$nll <- NULL
+png(plots.file('ehook_tmb_ind_pairs.png'), width=9, height=6, units='in', res=1000)
+pairs_ss(posterior=xx, mle=mle2, diag='acf', col=rgb(0,0,0,.5), pch='.')
+dev.off()
+rm(xx)
 boundp <- function(x, min, max){
     min + (max-min)/(1+exp(-x))
 }
-results.tmb.independent$logcpue_mean=boundp(results.tmb.independent$logcpue_mean2, -5, 5)
-results.tmb.independent$logcpue_sd=boundp(results.tmb.independent$logcpue_sd2, 0, 5)
-results.tmb.independent$sigma_obs_mean=boundp(results.tmb.independent$sigma_obs_mean2, -5, 5)
-results.tmb.independent$sigma_obs_sd=boundp(results.tmb.independent$sigma_obs_sd2, 0,5)
-results.tmb.independent$beta= boundp(results.tmb.independent$beta2, 0,10)
-results.tmb.independent$gamma=boundp(results.tmb.independent$gamma2, 0,1)
-results.tmb.independent <- results.tmb.independent[, -grep('2', x=names(results.tmb.independent))]
-names(results.tmb.independent) <-
-    gsub('.', '[', x=names(results.tmb.independent), fixed=TRUE)
-results.tmb.independent <- results.tmb.independent[, order(names(results.tmb.independent))]
-coda::effectiveSize(results.tmb.independent)
+results.tmb.ind$logcpue_mean=boundp(results.tmb.ind$logcpue_mean2, -5, 5)
+results.tmb.ind$logcpue_sd=boundp(results.tmb.ind$logcpue_sd2, 0, 5)
+results.tmb.ind$sigma_obs_mean=boundp(results.tmb.ind$sigma_obs_mean2, -5, 5)
+results.tmb.ind$sigma_obs_sd=boundp(results.tmb.ind$sigma_obs_sd2, 0,5)
+results.tmb.ind$beta= boundp(results.tmb.ind$beta2, 0,10)
+results.tmb.ind$gamma=boundp(results.tmb.ind$gamma2, 0,1)
+results.tmb.ind <- results.tmb.ind[, -grep('2', x=names(results.tmb.ind))]
+names(results.tmb.ind) <-
+    gsub('.', '_', x=names(results.tmb.ind), fixed=TRUE)
+results.tmb.ind <- results.tmb.ind[, order(names(results.tmb.ind))]
+coda::effectiveSize(results.tmb.ind)
 
-
-
-par(mfrow=c(6,6), mar=c(1,1,1,1))
-for(i in 1:ncol(results.tmb.independent)){
-   ## acf(results.tmb.independent[,i])
-    plot(results.tmb.independent[,i], type='l')
+png(plots.file('ehook_ind_acf.png'), width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
+for(i in 1:34) {
+    acf(results.tmb.ind[,i], axes=FALSE);box()
+    title(names(results.tmb.ind)[i], line=-1)
 }
+dev.off()
+
+png(plots.file('ehook_ind_trace.png'), width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
+for(i in 1:ncol(results.tmb.ind)){
+    plot(results.tmb.ind[,i], type='l', axes=FALSE, col=rgb(0,0,0,.5)); box()
+    title(names(results.tmb.ind)[i], line=-1)
+}
+dev.off()
 
 par(mfrow=c(5,7), mar=c(1,1,1,1), oma=c(1,1,1,1))
-for(i in 1:ncol(results.tmb.independent)){
-    qqplot(results.tmb.independent[,i], results2.jags[,i])
+for(i in 1:ncol(results.tmb.ind)){
+    qqplot(results.tmb.ind[,i], results2.jags[,i])
     abline(a=0,b=1)
-    mtext(names(results.tmb.independent)[i], line=-1)
+    mtext(names(results.tmb.ind)[i], line=-1)
     mtext(names(results2.jags)[i], line=-2)
 }
