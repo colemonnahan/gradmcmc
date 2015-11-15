@@ -91,15 +91,15 @@ data.stan <-
 ## sensible speed comparisons
 ##if(!exists('stan.model'))
 stan.model <- stan(file='ehook.stan', data=data.stan, iter=1, chains=1, init=list(inits))
-results1.stanHMC1 <-
-    stan(fit=stan.model, data=data.stan, iter=1000, warmup=50,
-         chains=n.chains1, thin=1, algorithm='HMC', init=list(inits),
-         seed=11212, control=list(adapt_engaged=TRUE, int_time=15))
-results2.stan <-
-    stan(fit=stan.model, data=data.stan, iter=1000, warmup=50,
-         chains=n.chains2, thin=1, algorithm='HMC', init=list(inits),
-         seed=11212, control=list(adapt_engaged=TRUE, int_time=15))
-saveRDS(results1.stan, file='results/results1.stan.RDS')
+results.stan.ind <-
+    stan(fit=stan.model, data=data.stan, iter=500000, warmup=2000,
+         chains=5, thin=10, algorithm='NUTS', init=rep(list(inits),5),
+         control=list(adapt_engaged=TRUE))
+traceplot(results.stan.ind, pars=c("logcpue_mean", "logcpue_sd", "beta",
+                            "gamma", "lp__"))
+plot(results.stan.ind)
+xx <- data.frame(extract(results.stan.ind))
+saveRDS(results.stan.ind, file='results/results.stan.ind.RDS')
 
 
 ### ------------------------------------------------------------
