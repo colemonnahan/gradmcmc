@@ -23,6 +23,14 @@ library(rstan)
 library(R2jags)
 library(snowfall)
 
+## TMB bounding functions, copied from  ADMB
+boundpinv <- function(x, min, max){
+    -log( (max-min)/(x-min) -1)
+}
+boundp <- function(x, min, max){
+    min + (max-min)/(1+exp(-x))
+}
+
 ## wrappers to run chains and return ESS and other metrics
 run_hmc <- function(obj, nsim, eps, L, covar=NULL, seed=NULL, diag=FALSE){
     if(!is.null(seed)) set.seed(seed)
