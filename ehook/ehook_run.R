@@ -7,11 +7,11 @@ setwd('ehook')
 source("load_models.R")
 
 ## spacing.
-n.out.ind <- 1000
-n.thin.ind <- 10
+n.out.ind <- 2000
+n.thin.ind <- 100
 n.chains.ind <- 4
 n.iter.ind <- 1.25*n.out.ind*n.thin.ind
-n.burnin.ind <- floor(.2*n.iter.ind)
+n.burnin.ind <- min(2000,floor(.1*n.iter.ind))
 
 
 ### ------------------------------------------------------------
@@ -34,15 +34,16 @@ saveRDS(results.stan.ind, file='results/results.stan.ind.RDS')
 ## TMB
 sfStop()
 sfInit( parallel=TRUE, cpus=n.chains.ind )
-sfExport("data.tmb", "inits.tmb", "n.thin.ind", "n.iter.ind",
-         "n.burnin.ind", "est.tmb")
+sfExport("data.tmb", "inits.tmb.est", "n.thin.ind", "n.iter.ind",
+         "n.burnin.ind")
 temp <- sfLapply(1:n.chains.ind, function(i){
   dyn.load(TMB::dynlib('ehook'))
-  model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
-  TMB:::.find.epsilon(theta=model.tmb$par, fn=model.tmb$fn, gr=model.tmb$gr)
+  model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='ehook')
   set.seed(i)
-  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=5,
-            Madapt=n.burnin.ind, delta=.5, algorithm='NUTS', diag=TRUE)
+  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=6,
+            Madapt=n.burnin.ind, delta=.65, algorithm='NUTS', diag=FALSE)
+  ## par(mfrow=c(1,3));with(x, {plot(Hbar); plot(epsbar); plot(epsvec)})
+  ## plot(x$par$beta2)
   ## discard warmup and then thin
   x <- x[-(1:n.burnin.ind),]
   x <- x[seq(1, nrow(x), by=n.thin.ind),]
@@ -53,6 +54,7 @@ results.tmb.ind <- do.call(rbind, temp)
 saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
 
 ### ------------------------------------------------------------
+
 
 ### quick check that the adaption is going well and long enough
 ## test <- llply(delta.vec, function(x)
@@ -115,7 +117,25 @@ ggsave(plots.file('ehook_nuts_perf.png'), width=8, height=6)
 ##                            Madapt=Madapt, delta=x)
 ##                     )))
 
-
+## ## Looking at how the DA works with NaN values for alpha
+## epsvec <- Hbar <- epsbar <- rep(NA, length=Madapt+1)
+## eps <- epsvec[1] <- epsbar[1] <- .0078125
+## mu <- log(10*eps)
+## Hbar[1] <- .001; gamma <- 0.05; t0 <- 10; kappa <- 0.75
+## for(m in 1:Madapt){
+##     logalpha <- NaN
+##     Hbar[m+1] <- (1-1/(m+t0))*Hbar[m] +
+##             (delta-min(1,exp(logalpha)))/(m+t0)
+##     ## If logalpha not defined, skip this updating step and use
+##     ## the last one.
+##     if(is.nan(Hbar[m+1])) Hbar[m+1] <- 2*abs(Hbar[m])
+##     logeps <- mu-sqrt(m)*Hbar[m+1]/gamma
+##     epsvec[m+1] <- exp(logeps)
+##     logepsbar <- m^(-kappa)*logeps + (1-m^(-kappa))*log(epsbar[m])
+##     epsbar[m+1] <- exp(logepsbar)
+##     eps <- epsvec[m+1]
+## }
+## plot(Hbar); plot(epsbar); plot(epsvec)
 
 
 

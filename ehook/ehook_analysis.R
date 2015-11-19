@@ -1,6 +1,11 @@
 ## This file reads in and processes the raw MCMC output, and then runs some
 ## analysis to validate the models and compare efficiency
 
+par.names <- c("chain", "LP", "beta", "gamma","logcpue_mean", "logcpue_sd",
+               "sigma_obs_mean", 'sigma_obs_sd', paste0('logcpue', 1:14),
+                paste0('logsigma_obs', 1:14))
+
+
 ## Read in the data by algorithm and look at the indepent runs to make sure
 ## eveyrthing is working right
 results.jags.ind <- readRDS(file='results/results.jags.ind.RDS')
@@ -10,27 +15,22 @@ names(results.jags.ind) <-
     gsub('.', '', x=names(results.jags.ind), fixed=TRUE)
 chain <- results.jags.ind$chain
 results.jags.ind$LP <- results.jags.ind$deviance*-2
-results.jags.ind$chain <- results.jags.ind$deviance <- NULL
-results.jags.ind <- results.jags.ind[, order(names(results.jags.ind))]
-results.jags.ind <- cbind(chain, results.jags.ind)
+results.jags.ind$deviance <- NULL
+results.jags.ind <- results.jags.ind[, par.names]
 
+## Stan
 results.stan.ind <- readRDS(file='results/results.stan.ind.RDS')
 xx <- extract(results.stan.ind, permuted=FALSE)
 results.stan.ind <- do.call(rbind, lapply(1:dim(xx)[2], function(x)
     data.frame(chain=x, xx[,x,])))
 names(results.stan.ind) <-
     gsub('.', '', x=names(results.stan.ind), fixed=TRUE)
-chain <- results.stan.ind$chain
 results.stan.ind$LP <- results.stan.ind$lp__
-results.stan.ind$chain <- results.stan.ind$lp__ <- NULL
-results.stan.ind <- results.stan.ind[, order(names(results.stan.ind))]
-results.stan.ind <- cbind(chain, results.stan.ind)
-
-results.tmb.ind <- readRDS(file='results/results.tmb.ind.RDS')
-chain <- results.tmb.ind$chain
-results.tmb.ind$chain <-  NULL
+results.stan.ind$lp__ <- NULL
+results.stan.ind <- results.stan.ind[, par.names]
 ## TMB results. these need to be processed manaully for the bounded
 ## parameters internally.
+results.tmb.ind <- readRDS(file='results/results.tmb.ind.RDS')
 results.tmb.ind$logcpue_mean=boundp(results.tmb.ind$logcpue_mean2, -5, 5)
 results.tmb.ind$logcpue_sd=boundp(results.tmb.ind$logcpue_sd2, 0, 5)
 results.tmb.ind$sigma_obs_mean=boundp(results.tmb.ind$sigma_obs_mean2, -5, 5)
@@ -40,21 +40,40 @@ results.tmb.ind$gamma=boundp(results.tmb.ind$gamma2, 0,1)
 results.tmb.ind <- results.tmb.ind[, -grep('2', x=names(results.tmb.ind))]
 names(results.tmb.ind) <-
     gsub('.', '', x=names(results.tmb.ind), fixed=TRUE)
-results.tmb.ind <- results.tmb.ind[, order(names(results.tmb.ind))]
-results.tmb.ind <- cbind(chain, results.tmb.ind)
+names(results.tmb.ind)[2:15] <- paste0('logcpue', 1:14)
+names(results.tmb.ind)[16:29] <- paste0('logsigma_obs', 1:14)
+results.tmb.ind <- results.tmb.ind[, par.names]
 
-hist(results.stan.ind$beta)
-hist(results.jags.ind$beta)
-hist(results.tmb.ind$beta)
-
-par(mfrow=c(6,6), mar=c(1,1,1,1), oma=c(1,1,1,1))
+## Make some plots to verify the models are the same
+png('plots/ehook_qqplot_tmb_stan.png', width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=c(1,1,1,1), oma=c(1,1,1,0), cex=.5, mgp=c(3,.5,0))
 for(i in 1:ncol(results.stan.ind)){
-    qqplot(results.stan.ind[,i], results.jags.ind[,i], pch='.', col='red')
-    abline(a=0,b=1, lwd=2)
-    mtext(names(results.stan.ind)[i], line=-1)
-    mtext(names(results.jags.ind)[i], line=-2)
+    qqplot(results.tmb.ind[,i], results.stan.ind[,i], pch=16, col=rgb(1,0,0,.5))
+    abline(a=0,b=1, lwd=2, col=rgb(0,0,0,.5))
+    mtext(names(results.tmb.ind)[i], line=-2, cex=.5)
+    mtext(names(results.stan.ind)[i], line=-1, cex=.5)
 }
-
+dev.off()
+## Make some plots to verify the models are the same
+png('plots/ehook_qqplot_tmb_jags.png', width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=c(1,1,1,1), oma=c(1,1,1,0), cex=.5, mgp=c(3,.5,0))
+for(i in 1:ncol(results.jags.ind)){
+    qqplot(results.tmb.ind[,i], results.jags.ind[,i], pch=16, col=rgb(1,0,0,.5))
+    abline(a=0,b=1, lwd=2, col=rgb(0,0,0,.5))
+    mtext(names(results.tmb.ind)[i], line=-2, cex=.5)
+    mtext(names(results.jags.ind)[i], line=-1, cex=.5)
+}
+dev.off()
+## Make some plots to verify the models are the same
+png('plots/ehook_qqplot_jags_stan.png', width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=c(1,1,1,1), oma=c(1,1,1,0), cex=.5, mgp=c(3,.5,0))
+for(i in 1:ncol(results.stan.ind)){
+    qqplot(results.jags.ind[,i], results.stan.ind[,i], pch=16, col=rgb(1,0,0,.5))
+    abline(a=0,b=1, lwd=2, col=rgb(0,0,0,.5))
+    mtext(names(results.jags.ind)[i], line=-2, cex=.5)
+    mtext(names(results.stan.ind)[i], line=-1, cex=.5)
+}
+dev.off()
 
 ## make set of plots for each model to verify
 png('plots/ehook_tmb_acf.png', width=9, height=6, units='in', res=500)
@@ -80,7 +99,7 @@ for(i in 1:ncol(results.jags.ind)) {
 dev.off()
 
 
-png(plots.file('ehook_tmb_trace.png'), width=9, height=6, units='in', res=500)
+png('plots/ehook_tmb_trace.png', width=9, height=6, units='in', res=500)
 par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
 for(i in 1:ncol(results.tmb.ind)){
     plot(results.tmb.ind[results.tmb.ind$chain==1,i], type='n', axes=FALSE,
@@ -91,28 +110,32 @@ for(i in 1:ncol(results.tmb.ind)){
     title(names(results.tmb.ind)[i], line=-1)
 }
 dev.off()
-png(plots.file('ehook_stan_trace.png'), width=9, height=6, units='in', res=500)
-
+png('plots/ehook_stan_trace.png', width=9, height=6, units='in', res=500)
 par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
 for(i in 1:ncol(results.stan.ind)){
-    plot(results.stan.ind[results.stan.ind$chain==1,i], type='n',
-         axes=FALSE, col=rgb(0,0,0,.5), ylim=range(results.stan.ind[,i]));
-    box()
+    plot(results.stan.ind[results.stan.ind$chain==1,i], type='n', axes=FALSE,
+         ylim=range(results.stan.ind[,i])); box()
     for(j in unique(results.stan.ind$chain)){
         lines(results.stan.ind[results.stan.ind$chain==j ,i ], col=j)
     }
     title(names(results.stan.ind)[i], line=-1)
 }
-
+dev.off()
+png('plots/ehook_jags_trace.png', width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
+for(i in 1:ncol(results.jags.ind)){
+    plot(results.jags.ind[results.jags.ind$chain==1,i], type='n', axes=FALSE,
+         ylim=range(results.jags.ind[,i])); box()
+    for(j in unique(results.jags.ind$chain)){
+        lines(results.jags.ind[results.jags.ind$chain==j ,i ], col=j)
+    }
+    title(names(results.jags.ind)[i], line=-1)
+}
 dev.off()
 
-par(mfrow=c(5,7), mar=c(1,1,1,1), oma=c(1,1,1,1))
-for(i in 1:ncol(results.tmb.ind)){
-    qqplot(results.tmb.ind[,i], results2.jags[,i])
-    abline(a=0,b=1)
-    mtext(names(results.tmb.ind)[i], line=-1)
-    mtext(names(results2.jags)[i], line=-2)
-}
+effectiveSize(results.tmb.ind)
+
+
 
 
 ## Look at pairs MLE covariance for long run.

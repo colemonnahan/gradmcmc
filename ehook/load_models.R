@@ -19,6 +19,49 @@ inits <- list(beta=.1, gamma=.05, logcpue=rep(1,len=Ngroup),
               sigma_obs_mean=-.5, sigma_obs_sd=.3)
 
 ### ------------------------------------------------------------
+## TMB models
+data.tmb <-
+    list(Ngroup=Ngroup, Nobs=Nobs,log_yobs=log.yobs, group=group, day=day,
+         spacing=spacing)
+data.tmb$group <- data.tmb$group-1
+## Need to massage inits b/c of transformed parameters
+inits.tmb <- inits
+inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -5, 5)
+inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0, 5)
+inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -5, 5)
+inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, 0,5)
+inits.tmb$beta2= boundpinv(inits.tmb$beta, 0,1)
+inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0,1)
+inits.tmb$logcpue_mean=NULL
+inits.tmb$logcpue_sd=NULL
+inits.tmb$sigma_obs_mean=NULL
+inits.tmb$sigma_obs_sd=NULL
+inits.tmb$beta=NULL
+inits.tmb$gamma=NULL
+## Need to reorder parameter list for TMB.
+pars <- c("beta2","gamma2","logcpue", "logcpue_mean2","logcpue_sd2",
+          "logsigma_obs", "sigma_obs_mean2", "sigma_obs_sd2" )
+inits.tmb <- inits.tmb[pars]
+compile("ehook.cpp")
+dyn.load(TMB::dynlib("ehook"))
+model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
+model.tmb$hessian <- TRUE
+model.tmb.opt <- do.call(optim, model.tmb)
+covar.tmb <- solve(model.tmb.opt$hessian)
+## This is given as a vector but need to put it in list form to put back
+## into model
+est.tmb <- model.tmb.opt$par
+x <- as.vector(est.tmb)
+inits.mle <- list(beta2=x[1], gamma2=x[2], logcpue=x[3:16], logcpue_mean2=x[17],
+     logcpue_sd2=x[18], logsigma_obs=x[19:32], sigma_obs_mean2=x[33],
+     sigma_obs_sd2=x[34])
+inits.tmb <- inits.mle
+
+## End of TMB
+### ------------------------------------------------------------
+
+
+### ------------------------------------------------------------
 ## JAGS models
 data.jags <-
     list(log_yobs=log.yobs, group=group, Nobs=Nobs, Ngroup=Ngroup, day=day,
@@ -65,44 +108,6 @@ model.stan <- stan(file='ehook.stan', data=data.stan, iter=1, chains=1,
 ## End of Stan
 ### ------------------------------------------------------------
 
-### ------------------------------------------------------------
-## TMB models
-data.tmb <-
-    list(Ngroup=Ngroup, Nobs=Nobs,log_yobs=log.yobs, group=group, day=day,
-         spacing=spacing)
-data.tmb$group <- data.tmb$group-1
-## Need to massage inits b/c of transformed parameters
-inits.tmb <- inits
-inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -5, 5)
-inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0, 5)
-inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -5, 5)
-inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, 0,5)
-inits.tmb$beta2= boundpinv(inits.tmb$beta, 0,1)
-inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0,1)
-inits.tmb$logcpue_mean=NULL
-inits.tmb$logcpue_sd=NULL
-inits.tmb$sigma_obs_mean=NULL
-inits.tmb$sigma_obs_sd=NULL
-inits.tmb$beta=NULL
-inits.tmb$gamma=NULL
-## Need to reorder parameter list for TMB.
-pars <- c("beta2","gamma2","logcpue", "logcpue_mean2","logcpue_sd2",
-          "logsigma_obs", "sigma_obs_mean2", "sigma_obs_sd2" )
-inits.tmb <- inits.tmb[pars]
-compile("ehook.cpp")
-dyn.load(TMB::dynlib("ehook"))
-model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
-model.tmb$hessian <- TRUE
-model.tmb.opt <- do.call(optim, model.tmb)
-covar.tmb <- solve(model.tmb.opt$hessian)
-## THis is given as a vector but need to put it in list form to put back
-## into model
-est.tmb <- model.tmb.opt$par
-x <- as.list(est.tmb)
-with(x, list(beta2=beta2, gamma2=gamma2, logcpue=logcpue))
-
-## End of TMB
-### ------------------------------------------------------------
 
 
 message("Finished loading ehook models")
