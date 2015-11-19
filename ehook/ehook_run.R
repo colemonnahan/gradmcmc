@@ -41,7 +41,7 @@ temp <- sfLapply(1:n.chains.ind, function(i){
   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
   TMB:::.find.epsilon(theta=model.tmb$par, fn=model.tmb$fn, gr=model.tmb$gr)
   set.seed(i)
-  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=.05, max_doubling=3,
+  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=5,
             Madapt=n.burnin.ind, delta=.5, algorithm='NUTS', diag=TRUE)
   ## discard warmup and then thin
   x <- x[-(1:n.burnin.ind),]
