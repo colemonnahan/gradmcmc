@@ -29,20 +29,23 @@ results.stan.ind <- cbind(chain, results.stan.ind)
 results.tmb.ind <- readRDS(file='results/results.tmb.ind.RDS')
 chain <- results.tmb.ind$chain
 results.tmb.ind$chain <-  NULL
-names(results.tmb.ind)
 ## TMB results. these need to be processed manaully for the bounded
 ## parameters internally.
 results.tmb.ind$logcpue_mean=boundp(results.tmb.ind$logcpue_mean2, -5, 5)
 results.tmb.ind$logcpue_sd=boundp(results.tmb.ind$logcpue_sd2, 0, 5)
 results.tmb.ind$sigma_obs_mean=boundp(results.tmb.ind$sigma_obs_mean2, -5, 5)
 results.tmb.ind$sigma_obs_sd=boundp(results.tmb.ind$sigma_obs_sd2, 0,5)
-results.tmb.ind$beta= boundp(results.tmb.ind$beta2, 0,10)
+results.tmb.ind$beta= boundp(results.tmb.ind$beta2, 0,1)
 results.tmb.ind$gamma=boundp(results.tmb.ind$gamma2, 0,1)
 results.tmb.ind <- results.tmb.ind[, -grep('2', x=names(results.tmb.ind))]
 names(results.tmb.ind) <-
     gsub('.', '', x=names(results.tmb.ind), fixed=TRUE)
 results.tmb.ind <- results.tmb.ind[, order(names(results.tmb.ind))]
 results.tmb.ind <- cbind(chain, results.tmb.ind)
+
+hist(results.stan.ind$beta)
+hist(results.jags.ind$beta)
+hist(results.tmb.ind$beta)
 
 par(mfrow=c(6,6), mar=c(1,1,1,1), oma=c(1,1,1,1))
 for(i in 1:ncol(results.stan.ind)){
@@ -52,24 +55,55 @@ for(i in 1:ncol(results.stan.ind)){
     mtext(names(results.jags.ind)[i], line=-2)
 }
 
-png(plots.file('ehook_ind_acf.png'), width=9, height=6, units='in', res=500)
+
+## make set of plots for each model to verify
+png('plots/ehook_tmb_acf.png', width=9, height=6, units='in', res=500)
 par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
-for(i in 1:34) {
+for(i in 1:ncol(results.tmb.ind)) {
     acf(results.tmb.ind[,i], axes=FALSE);box()
     title(names(results.tmb.ind)[i], line=-1)
 }
 dev.off()
+png('plots/ehook_stan_acf.png', width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
+for(i in 1:ncol(results.stan.ind)) {
+    acf(results.stan.ind[,i], axes=FALSE);box()
+    title(names(results.stan.ind)[i], line=-1)
+}
+dev.off()
+png('plots/ehook_jags_acf.png', width=9, height=6, units='in', res=500)
+par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
+for(i in 1:ncol(results.jags.ind)) {
+    acf(results.jags.ind[,i], axes=FALSE);box()
+    title(names(results.jags.ind)[i], line=-1)
+}
+dev.off()
 
-png(plots.file('ehook_ind_trace.png'), width=9, height=6, units='in', res=500)
+
+png(plots.file('ehook_tmb_trace.png'), width=9, height=6, units='in', res=500)
 par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
 for(i in 1:ncol(results.tmb.ind)){
-    plot(results.tmb.ind[results.tmb.ind$chain==1,i], type='n', axes=FALSE, col=rgb(0,0,0,.5));
-    box()
+    plot(results.tmb.ind[results.tmb.ind$chain==1,i], type='n', axes=FALSE,
+         ylim=range(results.tmb.ind[,i])); box()
     for(j in unique(results.tmb.ind$chain)){
         lines(results.tmb.ind[results.tmb.ind$chain==j ,i ], col=j)
     }
     title(names(results.tmb.ind)[i], line=-1)
 }
+dev.off()
+png(plots.file('ehook_stan_trace.png'), width=9, height=6, units='in', res=500)
+
+par(mfrow=c(6,6), mar=.1*c(1,1,1,1))
+for(i in 1:ncol(results.stan.ind)){
+    plot(results.stan.ind[results.stan.ind$chain==1,i], type='n',
+         axes=FALSE, col=rgb(0,0,0,.5), ylim=range(results.stan.ind[,i]));
+    box()
+    for(j in unique(results.stan.ind$chain)){
+        lines(results.stan.ind[results.stan.ind$chain==j ,i ], col=j)
+    }
+    title(names(results.stan.ind)[i], line=-1)
+}
+
 dev.off()
 
 par(mfrow=c(5,7), mar=c(1,1,1,1), oma=c(1,1,1,1))

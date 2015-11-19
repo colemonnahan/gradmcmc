@@ -15,7 +15,7 @@ parameters {
   real<lower=-1, upper=5> sigma_obs_mean;
   real<lower=0, upper=3> sigma_obs_sd;
   // fixed effects
-  real<lower=0, upper=10> beta;
+  real<lower=0, upper=1> beta;
   real<lower=0, upper=1> gamma;
   // random effects
   real logcpue[Ngroup];

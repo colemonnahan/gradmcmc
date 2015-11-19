@@ -29,7 +29,7 @@ Type objective_function<Type>::operator() ()
   Type logcpue_sd=boundp(logcpue_sd2, Type(0), Type(5));
   Type sigma_obs_mean=boundp(sigma_obs_mean2, Type(-5), Type(5));
   Type sigma_obs_sd=boundp(sigma_obs_sd2, Type(0),Type(5));
-  Type beta= boundp(beta2, Type(0),Type(10));
+  Type beta= boundp(beta2, Type(0),Type(1));
   Type gamma=boundp(gamma2, Type(0),Type(1));
 
   // negative log posterior

@@ -7,7 +7,7 @@ setwd('ehook')
 source("load_models.R")
 
 ## spacing.
-n.out.ind <- 11
+n.out.ind <- 1000
 n.thin.ind <- 10
 n.chains.ind <- 4
 n.iter.ind <- 1.25*n.out.ind*n.thin.ind
@@ -17,17 +17,40 @@ n.burnin.ind <- floor(.2*n.iter.ind)
 ### ------------------------------------------------------------
 ## Run a long chain with thinning to get independent samples to make sure
 ## the models are matching.
+## JAGS
 results.jags.ind <-
     jags(data=data.jags, parameters.to.save=params.jags,
          model.file=model.jags, n.chains=n.chains.ind,
          n.iter=n.iter.ind, n.burnin=n.burnin.ind, n.thin=n.thin.ind)
 saveRDS(results.jags.ind, file='results/results.jags.ind.RDS')
+## Stan
 results.stan.ind <-
     stan(fit=model.stan, data=data.stan, iter=n.iter.ind, warmup=n.burnin.ind,
          chains=n.chains.ind, thin=n.thin.ind, algorithm='NUTS',
          init=rep(list(inits), n.chains.ind),
          control=list(adapt_engaged=TRUE))
 saveRDS(results.stan.ind, file='results/results.stan.ind.RDS')
+
+## TMB
+sfStop()
+sfInit( parallel=TRUE, cpus=n.chains.ind )
+sfExport("data.tmb", "inits.tmb", "n.thin.ind", "n.iter.ind",
+         "n.burnin.ind", "est.tmb")
+temp <- sfLapply(1:n.chains.ind, function(i){
+  dyn.load(TMB::dynlib('ehook'))
+  model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
+  TMB:::.find.epsilon(theta=model.tmb$par, fn=model.tmb$fn, gr=model.tmb$gr)
+  set.seed(i)
+  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=.05, max_doubling=3,
+            Madapt=n.burnin.ind, delta=.5, algorithm='NUTS', diag=TRUE)
+  ## discard warmup and then thin
+  x <- x[-(1:n.burnin.ind),]
+  x <- x[seq(1, nrow(x), by=n.thin.ind),]
+  x$LP <- -apply(x, 1, model.tmb$fn)
+  cbind(chain=i, x)
+})
+results.tmb.ind <- do.call(rbind, temp)
+saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
 
 ### ------------------------------------------------------------
 
@@ -42,23 +65,6 @@ saveRDS(results.stan.ind, file='results/results.stan.ind.RDS')
 ##        aes(iteration, value, group=variable, color=variable)) +
 ##     geom_line()
 
-sfStop()
-sfInit( parallel=TRUE, cpus=n.chains.ind )
-sfExport("data.tmb", "inits.tmb", "n.thin.ind", "n.iter.ind", "n.burnin.ind")
-temp <- sfLapply(1:n.chains.ind, function(i){
-  dyn.load(TMB::dynlib('ehook'))
-  model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
-  set.seed(i)
-  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, diag=TRUE,
-            Madapt=n.burnin.ind, delta=.95, algorithm='HMC', L=10)
-  ## discard warmup and then thin
-  x <- x[-(1:n.burnin.ind),]
-  x <- x[seq(1, nrow(x), by=n.thin.ind),]
-  x$LP <- -apply(x, 1, model.tmb$fn)
-  cbind(chain=i, x)
-})
-results.tmb.ind <- do.call(rbind, temp)
-saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
 
 
 
@@ -73,7 +79,6 @@ tmb.ind.ess.long <- reshape2::melt(tmb.ind.ess, 'seed', value.name='ess')
 ggplot(tmb.ind.ess.long, aes(variable, ess, color=factor(seed)))+geom_point()
 
 results.tmb.ind <- do.call(rbind, temp3)
-## results.tmb.ind$LP <- -apply(results.tmb.ind[,-1], 1, model.tmb$fn)
 saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
 
 delta.vec <- seq(.1,.9, len=n.chains.ind*2)

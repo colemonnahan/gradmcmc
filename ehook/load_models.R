@@ -32,7 +32,7 @@ model.jags <- function(){
     logcpue_sd~dunif(0,5)             # SD of mean CPUE
     sigma_obs_mean~dunif(-1,5)               # mean Observation error, log scale
     sigma_obs_sd~dunif(0,3)               # sd of obs errors, log scale
-    beta~dunif(0,10)
+    beta~dunif(0,1)
     ## priors
     gamma~dunif(0,1)                   # Impact of day on CPUE
     ## Loop through the hyperparameters (on group) and calculate
@@ -77,7 +77,7 @@ inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -5, 5)
 inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0, 5)
 inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -5, 5)
 inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, 0,5)
-inits.tmb$beta2= boundpinv(inits.tmb$beta, 0,10)
+inits.tmb$beta2= boundpinv(inits.tmb$beta, 0,1)
 inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0,1)
 inits.tmb$logcpue_mean=NULL
 inits.tmb$logcpue_sd=NULL
@@ -94,8 +94,13 @@ dyn.load(TMB::dynlib("ehook"))
 model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
 model.tmb$hessian <- TRUE
 model.tmb.opt <- do.call(optim, model.tmb)
-est.tmb <- model.tmb.opt$par
 covar.tmb <- solve(model.tmb.opt$hessian)
+## THis is given as a vector but need to put it in list form to put back
+## into model
+est.tmb <- model.tmb.opt$par
+x <- as.list(est.tmb)
+with(x, list(beta2=beta2, gamma2=gamma2, logcpue=logcpue))
+
 ## End of TMB
 ### ------------------------------------------------------------
 
