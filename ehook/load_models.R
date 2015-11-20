@@ -26,12 +26,12 @@ data.tmb <-
 data.tmb$group <- data.tmb$group-1
 ## Need to massage inits b/c of transformed parameters
 inits.tmb <- inits
-inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -5, 5)
-inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0, 5)
-inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -5, 5)
-inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, 0,5)
-inits.tmb$beta2= boundpinv(inits.tmb$beta, 0,1)
-inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0,1)
+inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -2, 5)
+inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0.001, 5)
+inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -2, 0)
+inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, .001, 2)
+inits.tmb$beta2= boundpinv(inits.tmb$beta, 0.001, .5)
+inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0.001, .2)
 inits.tmb$logcpue_mean=NULL
 inits.tmb$logcpue_sd=NULL
 inits.tmb$sigma_obs_mean=NULL
@@ -52,10 +52,9 @@ covar.tmb <- solve(model.tmb.opt$hessian)
 ## into model
 est.tmb <- model.tmb.opt$par
 x <- as.vector(est.tmb)
-inits.mle <- list(beta2=x[1], gamma2=x[2], logcpue=x[3:16], logcpue_mean2=x[17],
+inits.tmb <- list(beta2=x[1], gamma2=x[2], logcpue=x[3:16], logcpue_mean2=x[17],
      logcpue_sd2=x[18], logsigma_obs=x[19:32], sigma_obs_mean2=x[33],
      sigma_obs_sd2=x[34])
-inits.tmb <- inits.mle
 
 ## End of TMB
 ### ------------------------------------------------------------
@@ -71,13 +70,13 @@ params.jags <-
       "sigma_obs_mean", "sigma_obs_sd", "beta")
 model.jags <- function(){
     ## hyperpriors
-    logcpue_mean~dunif(-5,5)            # Mean CPUE (asymptote)
-    logcpue_sd~dunif(0,5)             # SD of mean CPUE
-    sigma_obs_mean~dunif(-1,5)               # mean Observation error, log scale
-    sigma_obs_sd~dunif(0,3)               # sd of obs errors, log scale
-    beta~dunif(0,1)
+    logcpue_mean~dunif(-2,5)            # Mean CPUE (asymptote)
+    logcpue_sd~dunif(0.001,5)             # SD of mean CPUE
+    sigma_obs_mean~dunif(-2,0)               # mean Observation error, log scale
+    sigma_obs_sd~dunif(0.001,2)               # sd of obs errors, log scale
     ## priors
-    gamma~dunif(0,1)                   # Impact of day on CPUE
+    beta~dunif(0.001,.5)
+    gamma~dunif(0.001,.2)                   # Impact of day on CPUE
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Ngroup){
@@ -103,11 +102,9 @@ data.stan <-
 ## sensible speed comparisons
 ##if(!exists('model.stan'))
 inits.stan <- list(inits)
-model.stan <- stan(file='ehook.stan', data=data.stan, iter=1, chains=1,
+model.stan <- stan(file='ehook.stan', data=data.stan, iter=10, chains=1,
                    init=inits.stan)
 ## End of Stan
 ### ------------------------------------------------------------
-
-
 
 message("Finished loading ehook models")

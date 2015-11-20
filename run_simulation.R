@@ -14,11 +14,8 @@ source("startup.R")
 
 ## Parameters for the short chains, long ones (to verify models are the
 ## same) are specified in each file and differ.
-n.out1 <- 1000
-n.thin1 <- 1
-n.chains1 <- 1
-n.iter1 <- 1.25*n.out1*n.thin1
-n.burnin1 <- .2*n.iter1
+n.iter1 <- 1000
+n.burnin1 <- min(2000,.2*n.iter1)
 ### End of Step 0.
 ### ------------------------------------------------------------
 

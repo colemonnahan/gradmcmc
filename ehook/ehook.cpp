@@ -25,12 +25,12 @@ Type objective_function<Type>::operator() ()
 
 
   // // transform the bounded parameters
-  Type logcpue_mean=boundp(logcpue_mean2, Type(-5), Type(5));
-  Type logcpue_sd=boundp(logcpue_sd2, Type(0), Type(5));
-  Type sigma_obs_mean=boundp(sigma_obs_mean2, Type(-5), Type(5));
-  Type sigma_obs_sd=boundp(sigma_obs_sd2, Type(0),Type(5));
-  Type beta= boundp(beta2, Type(0),Type(1));
-  Type gamma=boundp(gamma2, Type(0),Type(1));
+  Type logcpue_mean=boundp(logcpue_mean2, Type(-2), Type(5));
+  Type logcpue_sd=boundp(logcpue_sd2, Type(.001), Type(5));
+  Type sigma_obs_mean=boundp(sigma_obs_mean2, Type(-2), Type(0));
+  Type sigma_obs_sd=boundp(sigma_obs_sd2, Type(.001),Type(2));
+  Type beta= boundp(beta2, Type(.001),Type(.5));
+  Type gamma=boundp(gamma2, Type(.001),Type(.2));
 
   // negative log posterior
   Type nll=0;
@@ -53,6 +53,8 @@ Type objective_function<Type>::operator() ()
     ypred= exp(logcpue(group(i)))*exp(-day(i)*gamma)*(1-exp(-beta*spacing(i)));
     nll-=dnorm(log_yobs(i), log(ypred), exp(logsigma_obs(group(i))), true);
   }
-  // REPORT(group(0));
+  REPORT(logcpue_sd);
+  REPORT(sigma_obs_sd);
+  REPORT(exp(logsigma_obs(group(0))));
   return nll;
 }

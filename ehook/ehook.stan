@@ -10,13 +10,13 @@ data {
 }
 parameters {
   // the hyperparameters with uniform priors on them
-  real<lower=-5, upper=5> logcpue_mean;
-  real<lower=0, upper=5> logcpue_sd;
-  real<lower=-1, upper=5> sigma_obs_mean;
-  real<lower=0, upper=3> sigma_obs_sd;
+  real<lower=-2, upper=5> logcpue_mean;
+  real<lower=0.001, upper=5> logcpue_sd;
+  real<lower=-2, upper=0> sigma_obs_mean;
+  real<lower=0.001, upper=2> sigma_obs_sd;
   // fixed effects
-  real<lower=0, upper=1> beta;
-  real<lower=0, upper=1> gamma;
+  real<lower=0.001, upper=0.5> beta;
+  real<lower=0.001, upper=0.2> gamma;
   // random effects
   real logcpue[Ngroup];
   real logsigma_obs[Ngroup];

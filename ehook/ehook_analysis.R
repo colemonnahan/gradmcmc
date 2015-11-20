@@ -20,6 +20,10 @@ results.jags.ind <- results.jags.ind[, par.names]
 
 ## Stan
 results.stan.ind <- readRDS(file='results/results.stan.ind.RDS')
+temp <- get_sampler_params(results.stan.ind)
+results.stan.tuning <- do.call(rbind, lapply(1:4, function(x)
+    data.frame(chain=x, iteration=1:nrow(temp[[x]]), temp[[x]])))
+stan.eps <- mean(subset(results.stan.tuning, iteration==max(results.stan.tuning$iteration))$stepsize__)
 xx <- extract(results.stan.ind, permuted=FALSE)
 results.stan.ind <- do.call(rbind, lapply(1:dim(xx)[2], function(x)
     data.frame(chain=x, xx[,x,])))
@@ -134,6 +138,11 @@ for(i in 1:ncol(results.jags.ind)){
 dev.off()
 
 effectiveSize(results.tmb.ind)
+
+ggplot(results.stan.tuning, aes(iteration, stepsize__, group=chain,
+                                color=factor(chain))) + geom_line()
+ggplot(results.stan.tuning, aes(iteration, n_leapfrog__, group=chain,
+                                color=chain)) + geom_line()
 
 
 

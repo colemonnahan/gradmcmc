@@ -22,6 +22,7 @@ library(plyr)
 library(rstan)
 library(R2jags)
 library(snowfall)
+library(reshape2)
 
 ## TMB bounding functions, copied from  ADMB
 boundpinv <- function(x, min, max){
@@ -29,6 +30,16 @@ boundpinv <- function(x, min, max){
 }
 boundp <- function(x, min, max){
     min + (max-min)/(1+exp(-x))
+}
+
+## Get cumulative minimum ESS as a percentage
+cum.minESS <- function(df, breaks=10){
+    x <- floor(seq(1, nrow(df), len=breaks))
+    x <- x[x>1]
+    y <- lapply(1:length(x), function(i){
+                    df2 <- df[1:x[i],]
+                    data.frame(x=x[i], pct.ess=100*min(effectiveSize(df2))/nrow(df2))})
+    do.call(rbind, y)
 }
 
 ## wrappers to run chains and return ESS and other metrics
