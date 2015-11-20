@@ -32,6 +32,7 @@ names(results.stan.ind) <-
 results.stan.ind$LP <- results.stan.ind$lp__
 results.stan.ind$lp__ <- NULL
 results.stan.ind <- results.stan.ind[, par.names]
+
 ## TMB results. these need to be processed manaully for the bounded
 ## parameters internally.
 results.tmb.ind <- readRDS(file='results/results.tmb.ind.RDS')

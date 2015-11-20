@@ -102,7 +102,7 @@ data.stan <-
 ## sensible speed comparisons
 ##if(!exists('model.stan'))
 inits.stan <- list(inits)
-model.stan <- stan(file='ehook.stan', data=data.stan, iter=10, chains=1,
+model.stan <- stan(file='ehook.stan', data=data.stan, iter=1000, chains=1,
                    init=inits.stan)
 ## End of Stan
 ### ------------------------------------------------------------

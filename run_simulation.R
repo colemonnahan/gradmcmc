@@ -14,8 +14,10 @@ source("startup.R")
 
 ## Parameters for the short chains, long ones (to verify models are the
 ## same) are specified in each file and differ.
-n.iter1 <- 1000
+n.iter1 <- 50000
 n.burnin1 <- min(2000,.2*n.iter1)
+source("ehook/ehook_run.R")
+
 ### End of Step 0.
 ### ------------------------------------------------------------
 

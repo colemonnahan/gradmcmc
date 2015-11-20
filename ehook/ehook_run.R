@@ -6,18 +6,218 @@ setwd('ehook')
 ## Load the models
 source("load_models.R")
 
-## spacing.
-n.out.ind <- 2000
-n.thin.ind <- 100
-n.chains.ind <- 4
-n.iter.ind <- 1.25*n.out.ind*n.thin.ind
-n.burnin.ind <- min(2000,floor(.1*n.iter.ind))
+stan.eps <- .2
+
+### ------------------------------------------------------------
+## Now run single long chains without thinning and timing to get
+## performance (minESS/time) for each of the methods
+perf.list <- list()
+set.seed(1355)
+message("Starting JAGS models for ehook")
+temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=list(inits),
+         model.file=model.jags, n.chains=1, DIC=FALSE,,
+         n.iter=1000, n.burnin=1, n.thin=1, progress='none')
+time.jags <-
+    as.vector(system.time(results.jags <-
+        update(temp, n.iter=n.iter1, n.burnin=n.burnin1, n.thin=1))[3])
+results.jags <- as.data.frame(results.jags$BUGSoutput$sims.array[,1,])
+perf.list[['jags']] <-
+    data.frame(model='ehook', platform='jags',time=time.jags,
+               minESS=min(effectiveSize(results.jags)),
+               medianESS=median(effectiveSize(results.jags)),
+               n=nrow(results.jags))
+
+message("Starting Stan models for ehook")
+## Use adaptation for eps but remove those samples and time it took
+results.stan.nuts <-
+    stan(fit=model.stan, data=data.stan, iter=n.iter1+n.burnin1,
+         warmup=n.burnin1, chains=1, thin=1, algorithm='NUTS',
+         init=list(inits),
+         control=list(stepsize=stan.eps, adapt_engaged=TRUE))
+## temp <- as.data.frame(get_sampler_params(results.stan))
+time.stan.nuts <- get_elapsed_time(results.stan.nuts)[2]
+results.stan.nuts <- as.data.frame(extract(results.stan.nuts, permuted=FALSE)[,1,])
+perf.stan.nuts <- min(effectiveSize(results.stan.nuts))/time.stan.nuts
+perf.list[['stan.nuts']] <-
+    data.frame(model='ehook', platform='stan.nuts',time=time.stan.nuts,
+               minESS=min(effectiveSize(results.stan.nuts)),
+               medianESS=median(effectiveSize(results.stan.nuts)),
+               n=nrow(results.stan.nuts))
+results.stan.hmc1 <-
+    stan(fit=model.stan, data=data.stan, iter=n.iter1+n.burnin1,
+         warmup=n.burnin1, chains=1, thin=1, algorithm='HMC',
+         init=list(inits),
+         control=list(stepsize=stan.eps, int_time=1, adapt_engaged=TRUE))
+## temp <- as.data.frame(get_sampler_params(results.stan))
+time.stan.hmc1 <- get_elapsed_time(results.stan.hmc1)[2]
+results.stan.hmc1 <- as.data.frame(extract(results.stan.hmc1, permuted=FALSE)[,1,])
+perf.stan.hmc1 <- min(effectiveSize(results.stan.hmc1))/time.stan.hmc1
+perf.list[['stan.hmc1']] <-
+    data.frame(model='ehook', platform='stan.hmc1',time=time.stan.hmc1,
+               minESS=min(effectiveSize(results.stan.hmc1)),
+               medianESS=median(effectiveSize(results.stan.hmc1)),
+               n=nrow(results.stan.hmc1))
+results.stan.hmc10 <-
+    stan(fit=model.stan, data=data.stan, iter=n.iter1+n.burnin1,
+         warmup=n.burnin1, chains=1, thin=1, algorithm='HMC',
+         init=list(inits),
+         control=list(stepsize=stan.eps, int_time=10, adapt_engaged=TRUE))
+## temp <- as.data.frame(get_sampler_params(results.stan))
+time.stan.hmc10 <- get_elapsed_time(results.stan.hmc10)[2]
+results.stan.hmc10 <- as.data.frame(extract(results.stan.hmc10, permuted=FALSE)[,1,])
+perf.stan.hmc10 <- min(effectiveSize(results.stan.hmc10))/time.stan.hmc10
+perf.list[['stan.hmc10']] <-
+    data.frame(model='ehook', platform='stan.hmc10',time=time.stan.hmc10,
+               minESS=min(effectiveSize(results.stan.hmc10)),
+               medianESS=median(effectiveSize(results.stan.hmc10)),
+               n=nrow(results.stan.hmc10))
+
+
+message("Starting TMB models for ehook")
+## Try combinations of TMB
+tmb.nuts.eps <- 0.05
+tmb.nuts.covar.eps <- .7
+tmb.hmc.eps <- 0.05
+tmb.hmc.covar.eps <- .7
+model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
+time.tmb.nuts <-
+    as.vector(system.time(
+        tmb.nuts <-
+            mcmc(obj=model.tmb, nsim=n.iter1, eps=tmb.nuts.eps,
+                 max_doubling=10, Madapt=n.burnin1, delta=.65,
+                 algorithm='NUTS', diag=FALSE)))[3]
+## tmb.nuts <- tmb.nuts[-(1:n.burnin1),]
+tmb.nuts$LP <- -apply(tmb.nuts, 1, model.tmb$fn)
+perf.list[['tmb.nuts']] <-
+    data.frame(model='ehook', platform='tmb.nuts',time=time.tmb.nuts,
+               minESS=min(effectiveSize(tmb.nuts)),
+               medianESS=median(effectiveSize(tmb.nuts)),
+               n=nrow(tmb.nuts))
+time.tmb.nuts.covar <-
+    as.vector(system.time(
+        tmb.nuts.covar <-
+            mcmc(obj=model.tmb, nsim=n.iter1, eps=tmb.nuts.covar.eps,
+                 max_doubling=6, covar=covar.tmb, Madapt=n.burnin1,
+                 delta=.65, algorithm='NUTS', diag=FALSE)))[3]
+## tmb.nuts.covar <- tmb.nuts.covar[-(1:n.burnin1),]
+tmb.nuts.covar$LP <- -apply(tmb.nuts.covar, 1, model.tmb$fn)
+perf.list[['tmb.nuts.covar']] <-
+    data.frame(model='ehook', platform='tmb.nuts.covar',time=time.tmb.nuts.covar,
+               minESS=min(effectiveSize(tmb.nuts.covar)),
+               medianESS=median(effectiveSize(tmb.nuts.covar)),
+               n=nrow(tmb.nuts.covar))
+time.tmb.hmc1 <-
+    as.vector(system.time(
+        tmb.hmc1 <-
+            mcmc(obj=model.tmb, nsim=n.iter1, eps=tmb.hmc.eps,
+                 Madapt=n.burnin1, delta=.65,
+                 algorithm='HMC', L=1, diag=FALSE)))[3]
+## tmb.hmc1 <- tmb.hmc1[-(1:n.burnin1),]
+tmb.hmc1$LP <- -apply(tmb.hmc1, 1, model.tmb$fn)
+perf.list[['tmb.hmc1']] <-
+    data.frame(model='ehook', platform='tmb.hmc1',time=time.tmb.hmc1,
+               minESS=min(effectiveSize(tmb.hmc1)),
+               medianESS=median(effectiveSize(tmb.hmc1)),
+               n=nrow(tmb.hmc1))
+time.tmb.hmc1.covar <-
+    as.vector(system.time(
+        tmb.hmc1.covar <-
+            mcmc(obj=model.tmb, nsim=n.iter1, eps=tmb.hmc.covar.eps,
+                 covar=covar.tmb, Madapt=n.burnin1,
+                 delta=.65, algorithm='HMC', L=1, diag=FALSE)))[3]
+## tmb.hmc1.covar <- tmb.hmc1.covar[-(1:n.burnin1),]
+tmb.hmc1.covar$LP <- -apply(tmb.hmc1.covar, 1, model.tmb$fn)
+perf.list[['tmb.hmc1.covar']] <-
+    data.frame(model='ehook', platform='tmb.hmc1.covar',time=time.tmb.hmc1.covar,
+               minESS=min(effectiveSize(tmb.hmc1.covar)),
+               medianESS=median(effectiveSize(tmb.hmc1.covar)),
+               n=nrow(tmb.hmc1.covar))
+time.tmb.hmc10 <-
+    as.vector(system.time(
+        tmb.hmc10 <-
+            mcmc(obj=model.tmb, nsim=n.iter1, eps=tmb.hmc.eps,
+                 Madapt=n.burnin1, delta=.65,
+                 algorithm='HMC', L=1, diag=FALSE)))[3]
+## tmb.hmc10 <- tmb.hmc10[-(1:n.burnin1),]
+tmb.hmc10$LP <- -apply(tmb.hmc10, 1, model.tmb$fn)
+perf.list[['tmb.hmc10']] <-
+    data.frame(model='ehook', platform='tmb.hmc10',time=time.tmb.hmc10,
+               minESS=min(effectiveSize(tmb.hmc10)),
+               medianESS=median(effectiveSize(tmb.hmc10)),
+               n=nrow(tmb.hmc10))
+time.tmb.hmc10.covar <-
+    as.vector(system.time(
+        tmb.hmc10.covar <-
+            mcmc(obj=model.tmb, nsim=n.iter1, eps=tmb.hmc.covar.eps,
+                 covar=covar.tmb, Madapt=n.burnin1,
+                 delta=.65, algorithm='HMC', L=1, diag=FALSE)))[3]
+## tmb.hmc10.covar <- tmb.hmc10.covar[-(1:n.burnin1),]
+tmb.hmc10.covar$LP <- -apply(tmb.hmc10.covar, 1, model.tmb$fn)
+perf.tmb.hmc10.covar <- time.tmb.hmc10.covar/(100*min(effectiveSize(tmb.hmc10.covar))/nrow(tmb.hmc10.covar))
+perf.list[['tmb.hmc10.covar']] <-
+    data.frame(model='ehook', platform='tmb.hmc10.covar',time=time.tmb.hmc10.covar,
+               minESS=min(effectiveSize(tmb.hmc10.covar)),
+               medianESS=median(effectiveSize(tmb.hmc10.covar)),
+               n=nrow(tmb.hmc10.covar))
+time.tmb.rwm.covar <-
+    as.vector(system.time(
+        tmb.rwm.covar <-
+            mcmc(obj=model.tmb, nsim=n.iter1, alpha=.3,
+                 covar=covar.tmb, algorithm='RWM', diag=FALSE)))[3]
+## tmb.rwm.covar <- tmb.rwm.covar[-(1:n.burnin1),]
+tmb.rwm.covar$LP <- -apply(tmb.rwm.covar, 1, model.tmb$fn)
+perf.tmb.rwm.covar <- time.tmb.rwm.covar/(100*min(effectiveSize(tmb.rwm.covar))/nrow(tmb.rwm.covar))
+perf.list[['tmb.rwm.covar']] <-
+    data.frame(model='ehook', platform='tmb.rwm.covar',time=time.tmb.rwm.covar,
+               minESS=min(effectiveSize(tmb.rwm.covar)),
+               medianESS=median(effectiveSize(tmb.rwm.covar)),
+               n=nrow(tmb.rwm.covar))
+
+
+x.jags <- cbind('software'='jags', cum.minESS(results.jags))
+x.tmb.nuts <- cbind('software'='tmb.nuts', cum.minESS(tmb.nuts))
+x.tmb.nuts.covar <- cbind('software'='tmb.nuts.covar', cum.minESS(tmb.nuts.covar))
+x.tmb.hmc1.covar <- cbind('software'='tmb.hmc1.covar', cum.minESS(tmb.hmc1.covar))
+x.tmb.hmc1 <- cbind('software'='tmb.hmc1', cum.minESS(tmb.hmc1))
+x.tmb.hmc10 <- cbind('software'='tmb.hmc10', cum.minESS(tmb.hmc10))
+x.tmb.hmc10.covar <- cbind('software'='tmb.hmc10.covar', cum.minESS(tmb.hmc10.covar))
+x.tmb.rwm.covar <- cbind('software'='tmb.rwm.covar', cum.minESS(tmb.rwm.covar))
+x.stan.nuts <- cbind('software'='stan.nuts', cum.minESS(results.stan.nuts))
+x.stan.hmc1 <- cbind('software'='stan.hmc1', cum.minESS(results.stan.hmc1))
+x.stan.hmc10 <- cbind('software'='stan.hmc10', cum.minESS(results.stan.hmc10))
+x <- rbind(x.jags, x.stan.nuts, x.tmb.nuts, x.tmb.nuts.covar, x.tmb.hmc1,
+           x.tmb.hmc10, x.tmb.hmc1.covar, x.tmb.hmc10.covar,
+          x.tmb.rwm.covar, x.stan.hmc1, x.stan.hmc10)
+ggplot(x, aes(x, pct.ess, group=software, color=software))+geom_line()
+ggsave('plots/ehook_cum_miness.png', width=7, height=5)
+
+## perf <- melt(data.frame(perf.jags, perf.stan, perf.tmb.nuts, perf.tmb.nuts.covar, perf.tmb.hmc1,
+##            perf.tmb.hmc10, perf.tmb.hmc1.covar, perf.tmb.hmc10.covar))
+perf <- do.call(rbind, perf.list)
+perf$samples.per.time <- perf$minESS/perf$time
+perf$pct.ess <- perf$minESS/perf$n
+perf[,c('platform', 'n')]
+ggplot(perf, aes(platform, time))+geom_bar(stat='identity')
+ggsave('plots/ehook_perf_time.png', width=12, height=5)
+ggplot(perf, aes(platform, minESS/n))+geom_bar(stat='identity')
+ggsave('plots/ehook_perf_pctess.png', width=12, height=5)
+ggplot(perf, aes(platform, medianESS))+geom_bar(stat='identity')
+ggsave('plots/ehook_perf_medianESS.png', width=12, height=5)
+ggplot(perf, aes(platform, samples.per.time))+geom_bar(stat='identity')
+ggsave('plots/ehook_perf_perf.png', width=12, height=5)
+
 
 
 ### ------------------------------------------------------------
 ## Run a long chain with thinning to get independent samples to make sure
 ## the models are matching.
 ## JAGS
+stop('do not run ind samples')
+n.out.ind <- 2000
+n.thin.ind <- 1000
+n.chains.ind <- 4
+n.iter.ind <- 1.25*n.out.ind*n.thin.ind
+n.burnin.ind <- min(2000,floor(.1*n.iter.ind))
 results.jags.ind <-
     jags(data=data.jags, parameters.to.save=params.jags,
          model.file=model.jags, n.chains=n.chains.ind,
@@ -53,154 +253,6 @@ results.tmb.ind <- do.call(rbind, temp)
 saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
 ## End of independent sampling
 ### ------------------------------------------------------------
-
-### ------------------------------------------------------------
-## Now run single long chains without thinning and timing to get
-## performance (minESS/time) for each of the methods
-perf.list <- list()
-set.seed(1355)
-temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=list(inits),
-         model.file=model.jags, n.chains=1, DIC=FALSE, jags.module=NULL,
-         n.iter=1000, n.burnin=1, n.thin=1, progress='none')
-time.jags <-
-    as.vector(system.time(results.jags <-
-        update(temp, n.iter=n.iter1, n.burnin=n.burnin1, n.thin=1))[3])
-results.jags <- as.data.frame(results.jags$BUGSoutput$sims.array[,1,])
-perf.list[['jags']] <-
-    data.frame(model='ehook', platform='jags',time=time.jags,
-               minESS=min(effectiveSize(results.jags)),
-               medianESS=median(effectiveSize(results.jags)),
-               n=nrow(results.jags))
-
-
-## Use adaptation for eps but remove those samples and time it took
-results.stan <-
-    stan(fit=model.stan, data=data.stan, iter=n.iter1+n.burnin1,
-         warmup=n.burnin1, chains=1, thin=1, algorithm='NUTS',
-         init=list(inits),
-         control=list(stepsize=stan.eps, adapt_engaged=TRUE))
-## temp <- as.data.frame(get_sampler_params(results.stan))
-time.stan <- get_elapsed_time(results.stan)[2]
-results.stan <- as.data.frame(extract(results.stan, permuted=FALSE)[,1,])
-perf.stan <- min(effectiveSize(results.stan))/time.stan
-perf.list[['stan']] <-
-    data.frame(model='ehook', platform='stan',time=time.stan,
-               minESS=min(effectiveSize(results.stan)),
-               medianESS=median(effectiveSize(results.stan)),
-               n=nrow(results.stan))
-
-
-## Try combinations of TMB
-tmb.nuts.eps <- 0.05
-tmb.nuts.covar.eps <- .7
-tmb.hmc.eps <- 0.05
-tmb.hmc.covar.eps <- .7
-model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
-time.tmb.nuts <-
-    as.vector(system.time(
-        tmb.nuts <-
-            mcmc(obj=model.tmb, nsim=n.iter1+n.burnin1, eps=tmb.nuts.eps,
-                 max_doubling=10, Madapt=n.burnin1, delta=.65,
-                 algorithm='NUTS', diag=FALSE)))[3]
-tmb.nuts <- tmb.nuts[-(1:n.burnin1),]
-tmb.nuts$LP <- -apply(tmb.nuts, 1, model.tmb$fn)
-perf.list[['tmb.nuts']] <-
-    data.frame(model='ehook', platform='tmb.nuts',time=time.tmb.nuts,
-               minESS=min(effectiveSize(tmb.nuts)),
-               medianESS=median(effectiveSize(tmb.nuts)),
-               n=nrow(tmb.nuts))
-time.tmb.nuts.covar <-
-    as.vector(system.time(
-        tmb.nuts.covar <-
-            mcmc(obj=model.tmb, nsim=n.iter1+n.burnin1, eps=tmb.nuts.covar.eps,
-                 max_doubling=6, covar=covar.tmb, Madapt=n.burnin1,
-                 delta=.65, algorithm='NUTS', diag=FALSE)))[3]
-tmb.nuts.covar <- tmb.nuts.covar[-(1:n.burnin1),]
-tmb.nuts.covar$LP <- -apply(tmb.nuts.covar, 1, model.tmb$fn)
-perf.list[['tmb.nuts.covar']] <-
-    data.frame(model='ehook', platform='tmb.nuts.covar',time=time.tmb.nuts.covar,
-               minESS=min(effectiveSize(tmb.nuts.covar)),
-               medianESS=median(effectiveSize(tmb.nuts.covar)),
-               n=nrow(tmb.nuts.covar))
-time.tmb.hmc1 <-
-    as.vector(system.time(
-        tmb.hmc1 <-
-            mcmc(obj=model.tmb, nsim=n.iter1+n.burnin1, eps=tmb.hmc.eps,
-                 Madapt=n.burnin1, delta=.65,
-                 algorithm='HMC', L=1, diag=FALSE)))[3]
-tmb.hmc1 <- tmb.hmc1[-(1:n.burnin1),]
-tmb.hmc1$LP <- -apply(tmb.hmc1, 1, model.tmb$fn)
-perf.list[['tmb.hmc1']] <-
-    data.frame(model='ehook', platform='tmb.hmc1',time=time.tmb.hmc1,
-               minESS=min(effectiveSize(tmb.hmc1)),
-               medianESS=median(effectiveSize(tmb.hmc1)),
-               n=nrow(tmb.hmc1))
-time.tmb.hmc1.covar <-
-    as.vector(system.time(
-        tmb.hmc1.covar <-
-            mcmc(obj=model.tmb, nsim=n.iter1+n.burnin1, eps=tmb.hmc.covar.eps,
-                 covar=covar.tmb, Madapt=n.burnin1,
-                 delta=.65, algorithm='HMC', L=1, diag=FALSE)))[3]
-tmb.hmc1.covar <- tmb.hmc1.covar[-(1:n.burnin1),]
-tmb.hmc1.covar$LP <- -apply(tmb.hmc1.covar, 1, model.tmb$fn)
-perf.list[['tmb.hmc1.covar']] <-
-    data.frame(model='ehook', platform='tmb.hmc1.covar',time=time.tmb.hmc1.covar,
-               minESS=min(effectiveSize(tmb.hmc1.covar)),
-               medianESS=median(effectiveSize(tmb.hmc1.covar)),
-               n=nrow(tmb.hmc1.covar))
-time.tmb.hmc10 <-
-    as.vector(system.time(
-        tmb.hmc10 <-
-            mcmc(obj=model.tmb, nsim=n.iter1+n.burnin1, eps=tmb.hmc.eps,
-                 Madapt=n.burnin1, delta=.65,
-                 algorithm='HMC', L=1, diag=FALSE)))[3]
-tmb.hmc10 <- tmb.hmc10[-(1:n.burnin1),]
-tmb.hmc10$LP <- -apply(tmb.hmc10, 1, model.tmb$fn)
-perf.list[['tmb.hmc10']] <-
-    data.frame(model='ehook', platform='tmb.hmc10',time=time.tmb.hmc10,
-               minESS=min(effectiveSize(tmb.hmc10)),
-               medianESS=median(effectiveSize(tmb.hmc10)),
-               n=nrow(tmb.hmc10))
-time.tmb.hmc10.covar <-
-    as.vector(system.time(
-        tmb.hmc10.covar <-
-            mcmc(obj=model.tmb, nsim=n.iter1+n.burnin1, eps=tmb.hmc.covar.eps,
-                 covar=covar.tmb, Madapt=n.burnin1,
-                 delta=.65, algorithm='HMC', L=1, diag=FALSE)))[3]
-tmb.hmc10.covar <- tmb.hmc10.covar[-(1:n.burnin1),]
-tmb.hmc10.covar$LP <- -apply(tmb.hmc10.covar, 1, model.tmb$fn)
-perf.tmb.hmc10.covar <- time.tmb.hmc10.covar/(100*min(effectiveSize(tmb.hmc10.covar))/nrow(tmb.hmc10.covar))
-perf.list[['tmb.hmc10.covar']] <-
-    data.frame(model='ehook', platform='tmb.hmc10.covar',time=time.tmb.hmc10.covar,
-               minESS=min(effectiveSize(tmb.hmc10.covar)),
-               medianESS=median(effectiveSize(tmb.hmc10.covar)),
-               n=nrow(tmb.hmc10.covar))
-
-x.jags <- cbind('software'='jags', cum.minESS(results.jags))
-x.tmb.nuts <- cbind('software'='tmb.nuts', cum.minESS(tmb.nuts))
-x.tmb.nuts.covar <- cbind('software'='tmb.nuts.covar', cum.minESS(tmb.nuts.covar))
-x.tmb.hmc1 <- cbind('software'='tmb.hmc1', cum.minESS(tmb.hmc1))
-x.tmb.hmc1.covar <- cbind('software'='tmb.hmc1.covar', cum.minESS(tmb.hmc1.covar))
-x.tmb.hmc10 <- cbind('software'='tmb.hmc10', cum.minESS(tmb.hmc10))
-x.tmb.hmc10.covar <- cbind('software'='tmb.hmc10.covar', cum.minESS(tmb.hmc10.covar))
-x.stan <- cbind('software'='stan', cum.minESS(results.stan))
-x <- rbind(x.jags, x.stan, x.tmb.nuts, x.tmb.nuts.covar, x.tmb.hmc1,
-           x.tmb.hmc10, x.tmb.hmc1.covar, x.tmb.hmc10.covar)
-ggplot(x, aes(x, pct.ess, group=software, color=software))+geom_line()
-## ggsave('plots/ehookcum_miness')
-
-## perf <- melt(data.frame(perf.jags, perf.stan, perf.tmb.nuts, perf.tmb.nuts.covar, perf.tmb.hmc1,
-##            perf.tmb.hmc10, perf.tmb.hmc1.covar, perf.tmb.hmc10.covar))
-perf <- do.call(rbind, perf.list)
-perf$samples.per.time <- perf$minESS/perf$time
-perf$pct.ess <- perf$minESS/perf$n
-ggplot(perf, aes(platform, time))+geom_bar(stat='identity')
-ggplot(perf, aes(platform, minESS/n))+geom_bar(stat='identity')
-ggplot(perf, aes(platform, medianESS/n))+geom_bar(stat='identity')
-ggplot(perf, aes(platform, samples.per.time))+geom_bar(stat='identity')
-
-
-
 
 
 ### quick check that the adaption is going well and long enough
