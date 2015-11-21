@@ -4,6 +4,10 @@ template<class Type>
 Type boundp(Type x, Type min, Type max){
   return min + (max-min)/(1+exp(-x));
 }
+vector<Type> boundp2(vector<Type> x, Type min, Type max){
+  return min + (max-min)/(1+exp(-x));
+}
+
 
 template<class Type>
 Type objective_function<Type>::operator() ()
@@ -16,7 +20,7 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR(spacing);
   PARAMETER(beta2);
   PARAMETER(gamma2);
-  PARAMETER_VECTOR(logcpue);
+  PARAMETER_VECTOR(logcpue2);
   PARAMETER(logcpue_mean2);
   PARAMETER(logcpue_sd2);
   PARAMETER_VECTOR(logsigma_obs);
@@ -31,6 +35,7 @@ Type objective_function<Type>::operator() ()
   Type sigma_obs_sd=boundp(sigma_obs_sd2, Type(.001),Type(2));
   Type beta= boundp(beta2, Type(.001),Type(.5));
   Type gamma=boundp(gamma2, Type(.001),Type(.2));
+  vector<Type> logcpue=boundp2(logcpue2, Type(-5), Type(5));
 
   // negative log posterior
   Type nll=0;

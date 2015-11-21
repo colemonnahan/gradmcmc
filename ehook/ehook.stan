@@ -18,8 +18,8 @@ parameters {
   real<lower=0.001, upper=0.5> beta;
   real<lower=0.001, upper=0.2> gamma;
   // random effects
-  real logcpue[Ngroup];
-  real logsigma_obs[Ngroup];
+  real<lower=-5, upper=5> logcpue[Ngroup];
+  real<lower=-5,upper=5> logsigma_obs[Ngroup];
 }
 // transformed parameters {
 //   for (j in 1:J)

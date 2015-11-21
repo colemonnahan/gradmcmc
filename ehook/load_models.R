@@ -14,7 +14,7 @@ Ngroup <- length(unique(group))
 day <- hs$daynumber
 
 ## Got some reasonable values from an initial run
-inits <- list(beta=.1, gamma=.05, logcpue=rep(1,len=Ngroup),
+inits <- list(beta=.1, gamma=.05, logcpue2=rep(1,len=Ngroup),
               logcpue_mean=.2, logcpue_sd=.5, logsigma_obs=rep(-.5, len=Ngroup),
               sigma_obs_mean=-.5, sigma_obs_sd=.3)
 
@@ -39,7 +39,7 @@ inits.tmb$sigma_obs_sd=NULL
 inits.tmb$beta=NULL
 inits.tmb$gamma=NULL
 ## Need to reorder parameter list for TMB.
-pars <- c("beta2","gamma2","logcpue", "logcpue_mean2","logcpue_sd2",
+pars <- c("beta2","gamma2","logcpue2", "logcpue_mean2","logcpue_sd2",
           "logsigma_obs", "sigma_obs_mean2", "sigma_obs_sd2" )
 inits.tmb <- inits.tmb[pars]
 compile("ehook.cpp")
