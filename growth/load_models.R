@@ -1,110 +1,110 @@
-message("Loading ehook models into the workspace")
+message("Loading growth models into the workspace")
 
-## The original data, to be processed into the correct format for each
-## model below
-hs <- read.csv('data/hs_data.csv')
-spacing <- hs$spacing
-group <- as.numeric(hs$group)
-## The dependent variable (catch.per.hook for now) on log scale since it
-## needs to be positive
-yobs <- hs$catch.per.hook
-log.yobs <- log(yobs+.1)
-Nobs <- length(yobs)
-Ngroup <- length(unique(group))
-day <- hs$daynumber
+## Global parameters
+Linf.mean <- 50
+k.mean <- .1
+t0 <- 0
+Linf.sigma <- .01
+k.sigma <- .01
+sigma.obs <- .1
+Ntime <- 50
 
-## Got some reasonable values from an initial run
-inits <- list(beta=.1, gamma=.05, logcpue2=rep(1,len=Ngroup),
-              logcpue_mean=.2, logcpue_sd=.5, logsigma_obs=rep(-.5, len=Ngroup),
-              sigma_obs_mean=-.5, sigma_obs_sd=.3)
+## source("generate_data.R")
+dat <- readRDS('growth_data_50000.RDS')
 
-### ------------------------------------------------------------
-## TMB models
-data.tmb <-
-    list(Ngroup=Ngroup, Nobs=Nobs,log_yobs=log.yobs, group=group, day=day,
-         spacing=spacing)
-data.tmb$group <- data.tmb$group-1
-## Need to massage inits b/c of transformed parameters
-inits.tmb <- inits
-inits.tmb$logcpue_mean2=boundpinv(inits.tmb$logcpue_mean, -2, 5)
-inits.tmb$logcpue_sd2=boundpinv(inits.tmb$logcpue_sd, 0.001, 5)
-inits.tmb$sigma_obs_mean2=boundpinv(inits.tmb$sigma_obs_mean, -2, 0)
-inits.tmb$sigma_obs_sd2=boundpinv(inits.tmb$sigma_obs_sd, .001, 2)
-inits.tmb$beta2= boundpinv(inits.tmb$beta, 0.001, .5)
-inits.tmb$gamma2=boundpinv(inits.tmb$gamma, 0.001, .2)
-inits.tmb$logcpue_mean=NULL
-inits.tmb$logcpue_sd=NULL
-inits.tmb$sigma_obs_mean=NULL
-inits.tmb$sigma_obs_sd=NULL
-inits.tmb$beta=NULL
-inits.tmb$gamma=NULL
-## Need to reorder parameter list for TMB.
-pars <- c("beta2","gamma2","logcpue2", "logcpue_mean2","logcpue_sd2",
-          "logsigma_obs", "sigma_obs_mean2", "sigma_obs_sd2" )
-inits.tmb <- inits.tmb[pars]
-compile("ehook.cpp")
-dyn.load(TMB::dynlib("ehook"))
-model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='ehook')
-model.tmb$hessian <- TRUE
-model.tmb.opt <- do.call(optim, model.tmb)
-covar.tmb <- solve(model.tmb.opt$hessian)
-## This is given as a vector but need to put it in list form to put back
-## into model
-est.tmb <- model.tmb.opt$par
-x <- as.vector(est.tmb)
-inits.tmb <- list(beta2=x[1], gamma2=x[2], logcpue=x[3:16], logcpue_mean2=x[17],
-     logcpue_sd2=x[18], logsigma_obs=x[19:32], sigma_obs_mean2=x[33],
-     sigma_obs_sd2=x[34])
-
-## End of TMB
-### ------------------------------------------------------------
-
+Nfish <- 1000
+dat2 <- dat[dat$fish<=Nfish,]
+data <- list(Nfish=Nfish, Nobs=nrow(dat2), loglengths=log(dat2$lengths),
+                  fish=dat2$fish, ages=dat2$ages)
+init <- list(Linf_mean=Linf.mean, Linf_sigma=Linf.sigma,
+                  k_mean=k.mean, k_sigma=k.sigma, sigma_obs=sigma.obs,
+                  logLinf=log(rep(Linf.mean, len=Nfish)),
+                  logk=log(rep(k.mean, len=Nfish)))
 
 ### ------------------------------------------------------------
 ## JAGS models
-data.jags <-
-    list(log_yobs=log.yobs, group=group, Nobs=Nobs, Ngroup=Ngroup, day=day,
-         spacing=spacing)
+data.jags <- data
 params.jags <-
-    c("logcpue_mean", "logcpue_sd", "logsigma_obs", "gamma", "logcpue",
-      "sigma_obs_mean", "sigma_obs_sd", "beta")
+    c("Linf_mean", "Linf_sigma", "k_mean", "k_sigma", "sigma_obs", "logLinf",
+      "logk")
+inits.jags <- list(init)
 model.jags <- function(){
     ## hyperpriors
-    logcpue_mean~dunif(-2,5)            # Mean CPUE (asymptote)
-    logcpue_sd~dunif(0.001,5)             # SD of mean CPUE
-    sigma_obs_mean~dunif(-2,0)               # mean Observation error, log scale
-    sigma_obs_sd~dunif(0.001,2)               # sd of obs errors, log scale
+    Linf_mean~dunif(30,70)
+    Linf_sigma~dunif(0,.05)
+    k_mean~dunif(0,.5)
+    k_sigma~dunif(0,.05)
     ## priors
-    beta~dunif(0.001,.5)
-    gamma~dunif(0.001,.2)                   # Impact of day on CPUE
+    sigma_obs~dunif(0,1)
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
-    for(i in 1:Ngroup){
-        logcpue[i]~dnorm(logcpue_mean, pow(logcpue_sd, -2))
-        logsigma_obs[i]~dnorm(sigma_obs_mean, pow(sigma_obs_sd, -2))
+    for(i in 1:Nfish){
+        logLinf[i]~dnorm(log(Linf_mean), pow(Linf_sigma, -2))
+        logk[i]~dnorm(log(k_mean), pow(k_sigma, -2))
     }
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
-        ypred[i] <- exp(logcpue[group[i]])*exp(-day[i]*gamma)*(1-exp(-beta*spacing[i]))
+        ypred[i] <- logLinf[fish[i]]+
+            log( (1-exp(-exp(logk[fish[i]])*ages[i])))
         ## Likelihood of data
-        log_yobs[i]~dnorm(log(ypred[i]), pow(exp(logsigma_obs[group[i]]), -2))
+        loglengths[i]~dnorm(ypred[i], pow(sigma_obs, -2))
     }
 }
+
+## temp <- jags(data=data.jags, inits=list(init), param=params.jags, model.file=model.jags,
+##      n.chains=1, n.burnin=1000, n.iter=5000, n.thin=5)
+## xx <- data.frame(temp$BUGSoutput$sims.list)
+## acf(xx$Linf_mean)
+## mean(xx$Linf_mean)
+## acf(xx$k_mean)
+## mean(xx$k_mean)
+## acf(xx$Linf_sigma)
+## mean(xx$Linf_sigma)
+## acf(xx$k_sigma)
+## mean(xx$k_sigma)
+## pairs(xx[, 1:10])
 ## End of JAGS
 ### ------------------------------------------------------------
 
+
+
 ### ------------------------------------------------------------
 ## Stan models
-data.stan <-
-    list(Ngroup=Ngroup, Nobs=Nobs,log_yobs=log.yobs, group=group, day=day,
-         spacing=spacing)
+data.stan <- data
 ## Run a dummy chain to get the compilation out of the way for more
 ## sensible speed comparisons
-##if(!exists('model.stan'))
-inits.stan <- list(inits)
-model.stan <- stan(file='ehook.stan', data=data.stan, iter=1000, chains=1,
+inits.stan <- list(init)
+model.stan <- stan(file='growth.stan', data=data.stan, iter=1000, chains=1,
                    init=inits.stan)
+
 ## End of Stan
 ### ------------------------------------------------------------
 
-message("Finished loading ehook models")
+message("Finished loading growth models")
+
+
+## model.R <- function(Linf_mean, Linf_sigma, k_mean, k_sigma, sigma_obs,
+##                     Linf, k){
+##     ages <- data$ages; fish <- data$fish; Nobs=data$Nobs
+##     loglengths <- data$loglengths
+##     NLL <- 0
+##     ## hyperpriors
+##     NLL <- NLL-dunif(x=Linf_mean, 30,70, log=TRUE)
+##     NLL <- NLL-dunif(x=Linf_sigma, 0,0.05, log=TRUE)
+##     NLL <- NLL-dunif(x=k_mean, 0, .5, log=TRUE)
+##     NLL <- NLL-dunif(x=k_sigma, 0,0.05, log=TRUE)
+##     ## priors
+##     NLL <- NLL-dunif(sigma_obs, 0,1)
+##     ## Loop through the hyperparameters (on group) and calculate
+##     ## probabilities
+##     NLL <- NLL- sum(dnorm(Linf, Linf_mean, Linf_sigma, log=TRUE))
+##     NLL <- NLL- sum(dnorm(k, k_mean, k_sigma, log=TRUE))
+##     ypred <- rep(NA, len=Nobs)
+##     for(i in 1:Nobs){
+##         ypred[i] <- log(Linf[fish[i]])+log( (1-exp(-k[fish[i]]*ages[i])) )
+##         ## Likelihood of data
+##         NLL <- NLL-dnorm(loglengths[i], 1.5, sigma_obs, log=TRUE)
+##     }
+##     NLL
+## }
+## model.R(Linf.mean, Linf.sigma, k.mean, k.sigma, sigma.obs, Linf, k)
