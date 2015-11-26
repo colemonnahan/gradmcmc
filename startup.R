@@ -33,12 +33,14 @@ boundp <- function(x, min, max){
 }
 
 ## Get cumulative minimum ESS as a percentage
-cum.minESS <- function(df, breaks=10){
-    x <- floor(seq(1, nrow(df), len=breaks))
+cum.minESS <- function(df, breaks=5){
+    x <- floor(seq(1, dim(df)[1], len=breaks))
     x <- x[x>1]
     y <- lapply(1:length(x), function(i){
-                    df2 <- df[1:x[i],]
-                    data.frame(x=x[i], pct.ess=100*min(effectiveSize(df2))/nrow(df2))})
+       df2 <- df[1:x[i],,, drop=FALSE]
+       ess <- data.frame(monitor(df2, warmup=0, print=FALSE))$n_eff
+      data.frame(iteration=x[i], pct.ess=100*min(ess)/dim(df2)[1])
+ })
     do.call(rbind, y)
 }
 

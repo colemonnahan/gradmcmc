@@ -12,7 +12,6 @@ Ntime <- 50
 ## source("generate_data.R")
 dat <- readRDS('growth_data_50000.RDS')
 
-Nfish <- 1000
 dat2 <- dat[dat$fish<=Nfish,]
 data <- list(Nfish=Nfish, Nobs=nrow(dat2), loglengths=log(dat2$lengths),
                   fish=dat2$fish, ages=dat2$ages)
@@ -74,7 +73,7 @@ data.stan <- data
 ## Run a dummy chain to get the compilation out of the way for more
 ## sensible speed comparisons
 inits.stan <- list(init)
-model.stan <- stan(file='growth.stan', data=data.stan, iter=1000, chains=1,
+model.stan <- stan(file='growth.stan', data=data.stan, iter=10, chains=1,
                    init=inits.stan)
 
 ## End of Stan
