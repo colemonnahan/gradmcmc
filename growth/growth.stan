@@ -20,26 +20,21 @@ parameters {
   real<lower=-5,upper=-1> logk[Nfish];
 }
 
-
 model {
 
  // Loop through random effects and do hyperpriors
+ real Linf;
+ real k;
  real ypred[Nobs];
-  // priors
- // logk_sigma~cauchy(0,5);
  // hyperparams
  logLinf~normal(logLinf_mean, logLinf_sigma);
  logk~normal(logk_mean, logk_sigma);
 
  // calculate likelihood of data
  for(i in 1:Nobs){
- real Linf;
- real k;
   Linf <- exp(logLinf[fish[i]]);
   k <- exp(logk[fish[i]]);
   ypred[i] <- log(Linf*(1-exp(-k*(ages[i]-5))));
  }
   loglengths~normal(ypred, sigma_obs);
-
-
 }

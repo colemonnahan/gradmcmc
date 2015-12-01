@@ -3,10 +3,10 @@
 
 setwd('growth')
 
-Nout <- 500
+Nout <- 1000
 stan.burnin <- 2000
 jags.burnin <- 2000
-n.thin.list <- 3
+n.thin <- 5
 
 
 ## Load the models
