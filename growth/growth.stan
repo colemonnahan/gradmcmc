@@ -9,29 +9,37 @@ data {
 }
 parameters {
   // the hyperparameters with uniform priors on them
-  real<lower=30, upper=70> Linf_mean;
-  real<lower=0, upper=.05> Linf_sigma;
-  real<lower=0, upper=.5> k_mean;
-  real<lower=0, upper=.05> k_sigma;
+  real logLinf_mean;
+  real<lower=0.01, upper=.5> logLinf_sigma;
+  real logk_mean;
+  real<lower=0.01, upper=.5> logk_sigma;
   // fixed effects
-  real<lower=0, upper=1> sigma_obs; // data on log scale
-  // random effects
+  real<lower=0, upper=.5> sigma_obs; // data on log scale
+  // random effects, needed to boudn these since they were going crazy during tuning
   real<lower=2, upper=5> logLinf[Nfish];
   real<lower=-5,upper=-1> logk[Nfish];
 }
+
+
 model {
-// Loop through random effects and do hyperpriors
- for(i in 1:Nfish){
- // mean cpue for each site in log space
- logLinf[i]~normal(log(Linf_mean), Linf_sigma);
- logk[i]~normal(log(k_mean), k_sigma);
- }
+
+ // Loop through random effects and do hyperpriors
+ real ypred[Nobs];
+  // priors
+ // logk_sigma~cauchy(0,5);
+ // hyperparams
+ logLinf~normal(logLinf_mean, logLinf_sigma);
+ logk~normal(logk_mean, logk_sigma);
 
  // calculate likelihood of data
  for(i in 1:Nobs){
- real ypred;
-  ypred <- logLinf[fish[i]] + log(1-exp(-exp(logk[fish[i]])*ages[i]));
- //if(i==1) {print(ypred); print(beta);}
- loglengths[i]~normal(ypred, sigma_obs);
+ real Linf;
+ real k;
+  Linf <- exp(logLinf[fish[i]]);
+  k <- exp(logk[fish[i]]);
+  ypred[i] <- log(Linf*(1-exp(-k*(ages[i]-5))));
  }
+  loglengths~normal(ypred, sigma_obs);
+
+
 }

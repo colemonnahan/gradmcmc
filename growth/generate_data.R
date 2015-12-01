@@ -6,25 +6,6 @@
 library(plyr)
 library(ggplot2)
 
-sample.vbgf <- function(t.vec, Linf, k,  t0=0){
-    lengths <- Linf*(1-exp(-k*(t.vec-t0)))
-    lengths <- lengths*exp(rnorm(n=length(t.vec), mean=0, sd=sigma.obs)-sigma.obs^2/2)
-    data.frame(ages=t.vec, lengths=lengths)
-}
-sample.ages <- function(n.ages) {sample(1:Ntime, size=n.ages, replace=FALSE)}
-sample.lengths <- function(Nfish, n.ages){
-    Linf.vec <- Linf.mean*exp(rnorm(n=Nfish, 0, sd=Linf.sigma)-Linf.sigma^2/2)
-    k.vec <- k.mean*exp(rnorm(n=Nfish, mean=0, sd=k.sigma)-k.sigma^2/2)
-    dat <- ldply(1:Nfish, function(i) cbind(fish=i, sample.vbgf(t.vec=sample.ages(n.ages), Linf=Linf.vec[i], k=k.vec[i])))
-    saveRDS(dat, paste0('growth_data_',Nfish,'.RDS'))
-    dat
-}
-
-dat.plot <- sample.lengths(Nfish=500, n.ages=5)
-g <- ggplot(dat.plot, aes(ages, lengths))+geom_point(alpha=.5)
-ggsave('plots/data_500.png', g, width=9, height=5)
-
-dat <- sample.lengths(Nfish=50000, n.ages=5)
 
 library(rstan)
 

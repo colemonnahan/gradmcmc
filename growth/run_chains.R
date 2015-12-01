@@ -3,28 +3,34 @@
 
 setwd('growth')
 
+Nout <- 500
+stan.burnin <- 2000
+jags.burnin <- 2000
+n.thin.list <- 3
+
+
 ## Load the models
-Nfish <- 10                           # this sets the dimension of the model
-source("load_models.R")
+Nfish <- 100                           # this sets the dimension of the model
+perf.list <- list()
+adapt.list <- list()
 
-n.iter1 <- 100000
-
+for(Nfish in c(10,100, 1000)){
 ### ------------------------------------------------------------
+source("load_models.R")
 ## Now run single long chains without thinning and timing to get
 ## performance (minESS/time) for each of the methods
-perf.list <- list()
 set.seed(1355)
 ## Run a long one to ensure good tuning
 temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
          model.file=model.jags, n.chains=1, DIC=FALSE,
-         n.iter=1000, n.burnin=500, n.thin=1)
+         n.iter=jags.burnin+10, n.burnin=jags.burnin, n.thin=1)
 ## Rerun with those tunings to get efficiency
 time.jags <-
-    as.vector(system.time(results.jags <- update(temp, n.iter=n.iter1))[3])
+    as.vector(system.time(results.jags <- update(temp, n.iter=n.thin*Nout, n.thin=n.thin))[3])
 sims.jags <- results.jags$BUGSoutput$sims.array
 saveRDS(sims.jags, file=paste0('results/sims.jags.', Nfish, '.RDS'))
 perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE))
-perf.list[['jags']] <-
+perf.list[[paste0('jags.',Nfish)]] <-
     data.frame(model='growth', platform='jags',time=time.jags,
                minESS=min(perf.jags$n_eff), Nfish=Nfish,
                medianESS=median(perf.jags$n_eff),
@@ -33,123 +39,167 @@ perf.list[['jags']] <-
 ## samples and time it took
 message('Starting stan.nuts model')
 results.stan.nuts <-
-    stan(fit=model.stan, data=data.stan, iter=2*n.iter1,
-         warmup=n.iter1, chains=1, thin=1, algorithm='NUTS',
+    stan(fit=model.stan, data=data.stan, iter=n.thin*Nout+stan.burnin,
+         warmup=stan.burnin, chains=1, thin=n.thin, algorithm='NUTS',
          init=inits.stan,
          control=list(adapt_engaged=TRUE))
-temp <- as.data.frame(get_sampler_params(results.stan.nuts))
+adapt.list[[paste0('stan.nuts.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.nuts))
 time.stan.nuts <- get_elapsed_time(results.stan.nuts)[2]
 sims.stan.nuts <- extract(results.stan.nuts, permuted=FALSE)
 saveRDS(sims.stan.nuts, file=paste0('results/sims.stan.nuts.', Nfish, '.RDS'))
 perf.stan.nuts <- data.frame(rstan::monitor(sims=sims.stan.nuts, warmup=0, print=FALSE))
-perf.list[['stan.nuts']] <-
+perf.list[[paste0('stan.nuts.',Nfish)]] <-
     data.frame(model='growth', platform='stan.nuts',time=time.stan.nuts,
                minESS=min(perf.stan.nuts$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.nuts$n_eff),
                n=dim(sims.stan.nuts)[1])
+par(mfrow=c(1,3))
+acf(sims.stan.nuts[,,4])
+plot(sims.stan.nuts[,,4])
+hist(sims.stan.nuts[,,4])
 message('Starting stan.hmc1 model')
 results.stan.hmc1 <-
-    stan(fit=model.stan, data=data.stan, iter=2*n.iter1,
-         warmup=n.iter1, chains=1, thin=1, algorithm='HMC',
+    stan(fit=model.stan, data=data.stan, iter=n.thin*Nout+stan.burnin,
+         warmup=stan.burnin, chains=1, thin=n.thin, algorithm='HMC',
          init=inits.stan, control=list(adapt_engaged=TRUE, int_time=1))
-## temp <- as.data.frame(get_sampler_params(results.stan))
+adapt.list[[paste0('stan.hmc1.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.hmc1))
 time.stan.hmc1 <- get_elapsed_time(results.stan.hmc1)[2]
 sims.stan.hmc1 <- extract(results.stan.hmc1, permuted=FALSE)
 saveRDS(sims.stan.hmc1, file=paste0('results/sims.stan.hmc1.', Nfish, '.RDS'))
 perf.stan.hmc1 <- data.frame(rstan::monitor(sims=sims.stan.hmc1, warmup=0, print=FALSE))
-perf.list[['stan.hmc1']] <-
+perf.list[[paste0('stan.hmc1.',Nfish)]] <-
     data.frame(model='growth', platform='stan.hmc1',time=time.stan.hmc1,
                minESS=min(perf.stan.hmc1$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.hmc1$n_eff),
                n=dim(sims.stan.hmc1)[1])
 message('Starting stan.hmc10 model')
 results.stan.hmc10 <-
-    stan(fit=model.stan, data=data.stan, iter=2*n.iter1,
-         warmup=n.iter1, chains=1, thin=1, algorithm='HMC',
+    stan(fit=model.stan, data=data.stan, iter=n.thin*Nout+stan.burnin,
+         warmup=stan.burnin, chains=1, thin=n.thin, algorithm='HMC',
          init=inits.stan, control=list(adapt_engaged=TRUE, int_time=1))
-## temp <- as.data.frame(get_sampler_params(results.stan))
+adapt.list[[paste0('stan.hmc10.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.hmc10))
 time.stan.hmc10 <- get_elapsed_time(results.stan.hmc10)[2]
 sims.stan.hmc10 <- extract(results.stan.hmc10, permuted=FALSE)
 saveRDS(sims.stan.hmc10, file=paste0('results/sims.stan.hmc10.', Nfish, '.RDS'))
 perf.stan.hmc10 <- data.frame(rstan::monitor(sims=sims.stan.hmc10, warmup=0, print=FALSE))
-perf.list[['stan.hmc10']] <-
+perf.list[[paste0('stan.hmc10.',Nfish)]] <-
     data.frame(model='growth', platform='stan.hmc10',time=time.stan.hmc10,
                minESS=min(perf.stan.hmc10$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.hmc10$n_eff),
                n=dim(sims.stan.hmc10)[1])
+## message("Making cumulative minESS plots")
+## x.jags <- cbind('software'='jags', cum.minESS(sims.jags))
+## x.stan.nuts <- cbind('software'='stan.nuts', cum.minESS(sims.stan.nuts))
+## x.stan.hmc1 <- cbind('software'='stan.hmc1', cum.minESS(sims.stan.hmc1))
+## x.stan.hmc10 <- cbind('software'='stan.hmc10', cum.minESS(sims.stan.hmc10))
+## x <- rbind(x.jags, x.stan.nuts, x.stan.hmc1, x.stan.hmc10)
+## ggplot(x, aes(iteration, pct.ess, group=software, color=software))+geom_line()
+## ggsave(paste0('plots/growth_cum_miness_',Nfish,'.png'), width=7, height=5)
+}
 
-message("Making cumulative minESS plots")
-x.jags <- cbind('software'='jags', cum.minESS(sims.jags))
-x.stan.nuts <- cbind('software'='stan.nuts', cum.minESS(sims.stan.nuts))
-x.stan.hmc1 <- cbind('software'='stan.hmc1', cum.minESS(sims.stan.hmc1))
-x.stan.hmc10 <- cbind('software'='stan.hmc10', cum.minESS(sims.stan.hmc10))
-x <- rbind(x.jags, x.stan.nuts, x.stan.hmc1, x.stan.hmc10)
-ggplot(x, aes(iteration, pct.ess, group=software, color=software))+geom_line()
-ggsave(paste0('plots/growth_cum_miness_',Nfish,'.png'), width=7, height=5)
 
-## perf <- melt(data.frame(perf.jags, perf.stan, perf.tmb.nuts, perf.tmb.nuts.covar, perf.tmb.hmc1,
-##            perf.tmb.hmc10, perf.tmb.hmc1.covar, perf.tmb.hmc10.covar))
 message("Making  plots")
 perf <- do.call(rbind, perf.list)
 perf$samples.per.time <- perf$minESS/perf$time
-perf$pct.ess <- perf$minESS/perf$n
+perf$pct.ess <- 100*perf$minESS/perf$n
 perf[,c('platform', 'n')]
-ggplot(perf, aes(platform, time))+geom_bar(stat='identity')
+ggplot(perf, aes(Nfish, time, group=platform, color=platform))+geom_line()+geom_point()
 ggsave('plots/growth_perf_time.png', width=12, height=5)
-ggplot(perf, aes(platform, minESS/n))+geom_bar(stat='identity')
+ggplot(perf, aes(Nfish, pct.ess, group=platform, color=platform))+geom_line()+geom_point()
 ggsave('plots/growth_perf_pctess.png', width=12, height=5)
-ggplot(perf, aes(platform, medianESS))+geom_bar(stat='identity')
+ggplot(perf, aes(Nfish, medianESS, group=platform, color=platform))+geom_line()+geom_point()
 ggsave('plots/growth_perf_medianESS.png', width=12, height=5)
-ggplot(perf, aes(platform, samples.per.time))+geom_bar(stat='identity')
+ggplot(perf, aes(Nfish, log(samples.per.time), group=platform, color=platform))+geom_line()+geom_point()
 ggsave('plots/growth_perf_perf.png', width=12, height=5)
 
+## Make sure Stan is adapting well enough
+par(mfrow=c(3,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
+myylim <- c(0,1)
+plot(adapt.list[['stan.nuts.10']]$stepsize__, ylim=myylim)
+mtext
+plot(adapt.list[['stan.nuts.100']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.nuts.500']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.nuts.1000']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.nuts.10']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.nuts.100']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.nuts.500']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.nuts.1000']]$accept_stat__, ylim=myylim)
+myylim <- c(0,100)
+plot(adapt.list[['stan.nuts.10']]$n_leapfrog__, ylim=myylim)
+plot(adapt.list[['stan.nuts.100']]$n_leapfrog__, ylim=myylim)
+plot(adapt.list[['stan.nuts.500']]$n_leapfrog__, ylim=myylim)
+plot(adapt.list[['stan.nuts.1000']]$n_leapfrog__, ylim=myylim)
+
+par(mfrow=c(2,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
+myylim <- c(0,1)
+plot(adapt.list[['stan.hmc1.10']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.100']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.500']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.1000']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.10']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.100']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.500']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.hmc1.1000']]$accept_stat__, ylim=myylim)
+
+par(mfrow=c(2,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
+myylim <- c(0,1)
+plot(adapt.list[['stan.hmc10.10']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.100']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.500']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.1000']]$stepsize__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.10']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.100']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.500']]$accept_stat__, ylim=myylim)
+plot(adapt.list[['stan.hmc10.1000']]$accept_stat__, ylim=myylim)
 
 
-### ------------------------------------------------------------
-## Run a long chain with thinning to get independent samples to make sure
-## the models are matching.
-## JAGS
-stop('do not run ind samples')
-n.out.ind <- 2000
-n.thin.ind <- 1000
-n.chains.ind <- 4
-n.iter.ind <- 1.25*n.out.ind*n.thin.ind
-n.burnin.ind <- min(2000,floor(.1*n.iter.ind))
-results.jags.ind <-
-    jags(data=data.jags, parameters.to.save=params.jags,
-         model.file=model.jags, n.chains=n.chains.ind,
-         n.iter=n.iter.ind, n.burnin=n.burnin.ind, n.thin=n.thin.ind)
-saveRDS(results.jags.ind, file='results/results.jags.ind.RDS')
-## Stan
-results.stan.ind <-
-    stan(fit=model.stan, data=data.stan, iter=n.iter.ind, warmup=n.burnin.ind,
-         chains=n.chains.ind, thin=n.thin.ind, algorithm='NUTS',
-         init=rep(list(inits), n.chains.ind),
-         control=list(adapt_engaged=TRUE))
-saveRDS(results.stan.ind, file='results/results.stan.ind.RDS')
-## TMB
-sfStop()
-sfInit( parallel=TRUE, cpus=n.chains.ind )
-sfExport("data.tmb", "inits.tmb.est", "n.thin.ind", "n.iter.ind",
-         "n.burnin.ind")
-temp <- sfLapply(1:n.chains.ind, function(i){
-  dyn.load(TMB::dynlib('growth'))
-  model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='growth')
-  set.seed(i)
-  x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=6,
-            Madapt=n.burnin.ind, delta=.65, algorithm='NUTS', diag=FALSE)
-  ## par(mfrow=c(1,3));with(x, {plot(Hbar); plot(epsbar); plot(epsvec)})
-  ## plot(x$par$beta2)
-  ## discard warmup and then thin
-  x <- x[-(1:n.burnin.ind),]
-  x <- x[seq(1, nrow(x), by=n.thin.ind),]
-  x$LP <- -apply(x, 1, model.tmb$fn)
-  cbind(chain=i, x)
-})
-results.tmb.ind <- do.call(rbind, temp)
-saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
-## End of independent sampling
-### ------------------------------------------------------------
+test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
+
+## ### ------------------------------------------------------------
+## ## Run a long chain with thinning to get independent samples to make sure
+## ## the models are matching.
+## ## JAGS
+## stop('do not run ind samples')
+## n.out.ind <- 2000
+## n.thin.ind <- 1000
+## n.chains.ind <- 4
+## n.iter.ind <- 1.25*n.out.ind*n.thin.ind
+## n.burnin.ind <- min(2000,floor(.1*n.iter.ind))
+## results.jags.ind <-
+##     jags(data=data.jags, parameters.to.save=params.jags,
+##          model.file=model.jags, n.chains=n.chains.ind,
+##          n.iter=n.iter.ind, n.burnin=n.burnin.ind, n.thin=n.thin.ind)
+## saveRDS(results.jags.ind, file='results/results.jags.ind.RDS')
+## ## Stan
+## results.stan.ind <-
+##     stan(fit=model.stan, data=data.stan, iter=n.iter.ind, warmup=n.burnin.ind,
+##          chains=n.chains.ind, thin=n.thin.ind, algorithm='NUTS',
+##          init=rep(list(inits), n.chains.ind),
+##          control=list(adapt_engaged=TRUE))
+## saveRDS(results.stan.ind, file='results/results.stan.ind.RDS')
+## ## TMB
+## sfStop()
+## sfInit( parallel=TRUE, cpus=n.chains.ind )
+## sfExport("data.tmb", "inits.tmb.est", "n.thin.ind", "n.iter.ind",
+##          "n.burnin.ind")
+## temp <- sfLapply(1:n.chains.ind, function(i){
+##   dyn.load(TMB::dynlib('growth'))
+##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='growth')
+##   set.seed(i)
+##   x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=6,
+##             Madapt=n.burnin.ind, delta=.65, algorithm='NUTS', diag=FALSE)
+##   ## par(mfrow=c(1,3));with(x, {plot(Hbar); plot(epsbar); plot(epsvec)})
+##   ## plot(x$par$beta2)
+##   ## discard warmup and then thin
+##   x <- x[-(1:n.burnin.ind),]
+##   x <- x[seq(1, nrow(x), by=n.thin.ind),]
+##   x$LP <- -apply(x, 1, model.tmb$fn)
+##   cbind(chain=i, x)
+## })
+## results.tmb.ind <- do.call(rbind, temp)
+## saveRDS(results.tmb.ind, file='results/results.tmb.ind.RDS')
+## ## End of independent sampling
+## ### ------------------------------------------------------------
 
 
 ### quick check that the adaption is going well and long enough
