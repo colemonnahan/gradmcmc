@@ -3,7 +3,7 @@
 
 setwd('growth_t')
 
-Nout <- 1000
+Nout <- 2000
 stan.burnin <- 2000
 jags.burnin <- 2000
 n.thin <- 5
@@ -14,7 +14,7 @@ Nfish <- 100                           # this sets the dimension of the model
 perf.list <- list()
 adapt.list <- list()
 
-for(Nfish in c(10,100, 1000)){
+for(Nfish in c(10,100, 500, 1000, 2000, 5000)){
 ### ------------------------------------------------------------
 source("load_models.R")
 ## Now run single long chains without thinning and timing to get
@@ -76,7 +76,7 @@ message('Starting stan.hmc10 model')
 results.stan.hmc10 <-
     stan(fit=model.stan, data=data.stan, iter=n.thin*Nout+stan.burnin,
          warmup=stan.burnin, chains=1, thin=n.thin, algorithm='HMC',
-         init=inits.stan, control=list(adapt_engaged=TRUE, int_time=1))
+         init=inits.stan, control=list(adapt_engaged=TRUE, int_time=10))
 adapt.list[[paste0('stan.hmc10.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.hmc10))
 time.stan.hmc10 <- get_elapsed_time(results.stan.hmc10)[2]
 sims.stan.hmc10 <- extract(results.stan.hmc10, permuted=FALSE)
@@ -95,10 +95,12 @@ perf.list[[paste0('stan.hmc10.',Nfish)]] <-
 ## x <- rbind(x.jags, x.stan.nuts, x.stan.hmc1, x.stan.hmc10)
 ## ggplot(x, aes(iteration, pct.ess, group=software, color=software))+geom_line()
 ## ggsave(paste0('plots/growth_t_cum_miness_',Nfish,'.png'), width=7, height=5)
+saveRDS(perf.list, 'results/perf.list.RDS')
 }
 
 
 message("Making  plots")
+perf.list <- readRDS('results/perf.list.RDS')
 perf <- do.call(rbind, perf.list)
 perf$samples.per.time <- perf$minESS/perf$time
 perf$pct.ess <- 100*perf$minESS/perf$n
