@@ -1,7 +1,7 @@
 ## ehook: An analysis of the Hamley and Skud (1978) data on the effect of
 ## hook
 
-setwd('growth')
+setwd('growth_t')
 
 Nout <- 1000
 stan.burnin <- 2000
@@ -31,7 +31,7 @@ sims.jags <- results.jags$BUGSoutput$sims.array
 saveRDS(sims.jags, file=paste0('results/sims.jags.', Nfish, '.RDS'))
 perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE))
 perf.list[[paste0('jags.',Nfish)]] <-
-    data.frame(model='growth', platform='jags',time=time.jags,
+    data.frame(model='growth_t', platform='jags',time=time.jags,
                minESS=min(perf.jags$n_eff), Nfish=Nfish,
                medianESS=median(perf.jags$n_eff),
                n=dim(sims.jags)[1])
@@ -49,7 +49,7 @@ sims.stan.nuts <- extract(results.stan.nuts, permuted=FALSE)
 saveRDS(sims.stan.nuts, file=paste0('results/sims.stan.nuts.', Nfish, '.RDS'))
 perf.stan.nuts <- data.frame(rstan::monitor(sims=sims.stan.nuts, warmup=0, print=FALSE))
 perf.list[[paste0('stan.nuts.',Nfish)]] <-
-    data.frame(model='growth', platform='stan.nuts',time=time.stan.nuts,
+    data.frame(model='growth_t', platform='stan.nuts',time=time.stan.nuts,
                minESS=min(perf.stan.nuts$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.nuts$n_eff),
                n=dim(sims.stan.nuts)[1])
@@ -68,7 +68,7 @@ sims.stan.hmc1 <- extract(results.stan.hmc1, permuted=FALSE)
 saveRDS(sims.stan.hmc1, file=paste0('results/sims.stan.hmc1.', Nfish, '.RDS'))
 perf.stan.hmc1 <- data.frame(rstan::monitor(sims=sims.stan.hmc1, warmup=0, print=FALSE))
 perf.list[[paste0('stan.hmc1.',Nfish)]] <-
-    data.frame(model='growth', platform='stan.hmc1',time=time.stan.hmc1,
+    data.frame(model='growth_t', platform='stan.hmc1',time=time.stan.hmc1,
                minESS=min(perf.stan.hmc1$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.hmc1$n_eff),
                n=dim(sims.stan.hmc1)[1])
@@ -83,7 +83,7 @@ sims.stan.hmc10 <- extract(results.stan.hmc10, permuted=FALSE)
 saveRDS(sims.stan.hmc10, file=paste0('results/sims.stan.hmc10.', Nfish, '.RDS'))
 perf.stan.hmc10 <- data.frame(rstan::monitor(sims=sims.stan.hmc10, warmup=0, print=FALSE))
 perf.list[[paste0('stan.hmc10.',Nfish)]] <-
-    data.frame(model='growth', platform='stan.hmc10',time=time.stan.hmc10,
+    data.frame(model='growth_t', platform='stan.hmc10',time=time.stan.hmc10,
                minESS=min(perf.stan.hmc10$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.hmc10$n_eff),
                n=dim(sims.stan.hmc10)[1])
@@ -94,7 +94,7 @@ perf.list[[paste0('stan.hmc10.',Nfish)]] <-
 ## x.stan.hmc10 <- cbind('software'='stan.hmc10', cum.minESS(sims.stan.hmc10))
 ## x <- rbind(x.jags, x.stan.nuts, x.stan.hmc1, x.stan.hmc10)
 ## ggplot(x, aes(iteration, pct.ess, group=software, color=software))+geom_line()
-## ggsave(paste0('plots/growth_cum_miness_',Nfish,'.png'), width=7, height=5)
+## ggsave(paste0('plots/growth_t_cum_miness_',Nfish,'.png'), width=7, height=5)
 }
 
 
@@ -104,13 +104,13 @@ perf$samples.per.time <- perf$minESS/perf$time
 perf$pct.ess <- 100*perf$minESS/perf$n
 perf[,c('platform', 'n')]
 ggplot(perf, aes(Nfish, time, group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_time.png', width=12, height=5)
+ggsave('plots/growth_t_perf_time.png', width=12, height=5)
 ggplot(perf, aes(Nfish, pct.ess, group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_pctess.png', width=12, height=5)
+ggsave('plots/growth_t_perf_pctess.png', width=12, height=5)
 ggplot(perf, aes(Nfish, medianESS, group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_medianESS.png', width=12, height=5)
+ggsave('plots/growth_t_perf_medianESS.png', width=12, height=5)
 ggplot(perf, aes(Nfish, log(samples.per.time), group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_perf.png', width=12, height=5)
+ggsave('plots/growth_t_perf_perf.png', width=12, height=5)
 
 ## Make sure Stan is adapting well enough
 par(mfrow=c(3,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
@@ -183,8 +183,8 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## sfExport("data.tmb", "inits.tmb.est", "n.thin.ind", "n.iter.ind",
 ##          "n.burnin.ind")
 ## temp <- sfLapply(1:n.chains.ind, function(i){
-##   dyn.load(TMB::dynlib('growth'))
-##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='growth')
+##   dyn.load(TMB::dynlib('growth_t'))
+##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='growth_t')
 ##   set.seed(i)
 ##   x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=6,
 ##             Madapt=n.burnin.ind, delta=.65, algorithm='NUTS', diag=FALSE)
@@ -236,26 +236,26 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## params <- data.frame(expand.grid(delta=delta.vec, covar=c(TRUE, FALSE), seed=seeds.vec))
 ## sfExport("params", "Madapt", "nsim", "covar.tmb", "run_nuts", "data.tmb",
 ##          "inits.tmb", "run_hmc")
-## growth.nuts.perf.list <- sfLapply(1:nrow(params), function(i){
-##   dyn.load(TMB::dynlib("growth"))
-##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth')
+## growth_t.nuts.perf.list <- sfLapply(1:nrow(params), function(i){
+##   dyn.load(TMB::dynlib("growth_t"))
+##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth_t')
 ##    covar.temp <- if(params$covar[i]) covar.tmb else NULL
 ##    run_nuts(obj=model.tmb, nsim=nsim, seed=params$seed[i],
 ##             covar=covar.temp, Madapt=Madapt, delta=params$delta[i])
 ## })
-## growth.nuts.perf <- do.call(rbind, growth.nuts.perf.list)
-## saveRDS(growth.nuts.perf, results.file('growth.nuts.perf.RDS'))
-## growth.nuts.perf$acceptance <- NULL
-## growth.nuts.perf.long <-
-##     reshape2::melt(growth.nuts.perf, c('covar', 'tuning', 'algorithm', 'seed'))
-## ggplot(growth.nuts.perf.long, aes(tuning, value, group=covar, color=covar)) +
+## growth_t.nuts.perf <- do.call(rbind, growth_t.nuts.perf.list)
+## saveRDS(growth_t.nuts.perf, results.file('growth_t.nuts.perf.RDS'))
+## growth_t.nuts.perf$acceptance <- NULL
+## growth_t.nuts.perf.long <-
+##     reshape2::melt(growth_t.nuts.perf, c('covar', 'tuning', 'algorithm', 'seed'))
+## ggplot(growth_t.nuts.perf.long, aes(tuning, value, group=covar, color=covar)) +
 ##     geom_line() + facet_wrap('variable', nrow=3, scales='free')
-## ggsave(plots.file('growth_nuts_perf.png'), width=8, height=6)
+## ggsave(plots.file('growth_t_nuts_perf.png'), width=8, height=6)
 
 
 
 ## ### Old way of using plyr, but can't get parallel to work
-## ## growth.nuts.perf <-
+## ## growth_t.nuts.perf <-
 ## ##     ldply(seeds.vec, function(seed)
 ## ##           ldply(covar.list, function(cov)
 ## ##               llply(delta.vec, function(x)
@@ -302,13 +302,13 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## model.tmb$fn(par)
 ## model.tmb$report()
 
-## message("Starting TMB models for growth")
+## message("Starting TMB models for growth_t")
 ## ## Try combinations of TMB
 ## tmb.nuts.eps <- 0.05
 ## tmb.nuts.covar.eps <- .7
 ## tmb.hmc.eps <- 0.05
 ## tmb.hmc.covar.eps <- .7
-## model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth')
+## model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth_t')
 ## time.tmb.nuts <-
 ##     as.vector(system.time(
 ##         tmb.nuts <-
@@ -318,7 +318,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## ## tmb.nuts <- tmb.nuts[-(1:n.burnin1),]
 ## tmb.nuts$LP <- -apply(tmb.nuts, 1, model.tmb$fn)
 ## perf.list[['tmb.nuts']] <-
-##     data.frame(model='growth', platform='tmb.nuts',time=time.tmb.nuts,
+##     data.frame(model='growth_t', platform='tmb.nuts',time=time.tmb.nuts,
 ##                minESS=min(effectiveSize(tmb.nuts)),
 ##                medianESS=median(effectiveSize(tmb.nuts)),
 ##                n=nrow(tmb.nuts))
@@ -331,7 +331,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## ## tmb.nuts.covar <- tmb.nuts.covar[-(1:n.burnin1),]
 ## tmb.nuts.covar$LP <- -apply(tmb.nuts.covar, 1, model.tmb$fn)
 ## perf.list[['tmb.nuts.covar']] <-
-##     data.frame(model='growth', platform='tmb.nuts.covar',time=time.tmb.nuts.covar,
+##     data.frame(model='growth_t', platform='tmb.nuts.covar',time=time.tmb.nuts.covar,
 ##                minESS=min(effectiveSize(tmb.nuts.covar)),
 ##                medianESS=median(effectiveSize(tmb.nuts.covar)),
 ##                n=nrow(tmb.nuts.covar))
@@ -344,7 +344,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## ## tmb.hmc1 <- tmb.hmc1[-(1:n.burnin1),]
 ## tmb.hmc1$LP <- -apply(tmb.hmc1, 1, model.tmb$fn)
 ## perf.list[['tmb.hmc1']] <-
-##     data.frame(model='growth', platform='tmb.hmc1',time=time.tmb.hmc1,
+##     data.frame(model='growth_t', platform='tmb.hmc1',time=time.tmb.hmc1,
 ##                minESS=min(effectiveSize(tmb.hmc1)),
 ##                medianESS=median(effectiveSize(tmb.hmc1)),
 ##                n=nrow(tmb.hmc1))
@@ -357,7 +357,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## ## tmb.hmc1.covar <- tmb.hmc1.covar[-(1:n.burnin1),]
 ## tmb.hmc1.covar$LP <- -apply(tmb.hmc1.covar, 1, model.tmb$fn)
 ## perf.list[['tmb.hmc1.covar']] <-
-##     data.frame(model='growth', platform='tmb.hmc1.covar',time=time.tmb.hmc1.covar,
+##     data.frame(model='growth_t', platform='tmb.hmc1.covar',time=time.tmb.hmc1.covar,
 ##                minESS=min(effectiveSize(tmb.hmc1.covar)),
 ##                medianESS=median(effectiveSize(tmb.hmc1.covar)),
 ##                n=nrow(tmb.hmc1.covar))
@@ -370,7 +370,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## ## tmb.hmc10 <- tmb.hmc10[-(1:n.burnin1),]
 ## tmb.hmc10$LP <- -apply(tmb.hmc10, 1, model.tmb$fn)
 ## perf.list[['tmb.hmc10']] <-
-##     data.frame(model='growth', platform='tmb.hmc10',time=time.tmb.hmc10,
+##     data.frame(model='growth_t', platform='tmb.hmc10',time=time.tmb.hmc10,
 ##                minESS=min(effectiveSize(tmb.hmc10)),
 ##                medianESS=median(effectiveSize(tmb.hmc10)),
 ##                n=nrow(tmb.hmc10))
@@ -384,7 +384,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## tmb.hmc10.covar$LP <- -apply(tmb.hmc10.covar, 1, model.tmb$fn)
 ## perf.tmb.hmc10.covar <- time.tmb.hmc10.covar/(100*min(effectiveSize(tmb.hmc10.covar))/nrow(tmb.hmc10.covar))
 ## perf.list[['tmb.hmc10.covar']] <-
-##     data.frame(model='growth', platform='tmb.hmc10.covar',time=time.tmb.hmc10.covar,
+##     data.frame(model='growth_t', platform='tmb.hmc10.covar',time=time.tmb.hmc10.covar,
 ##                minESS=min(effectiveSize(tmb.hmc10.covar)),
 ##                medianESS=median(effectiveSize(tmb.hmc10.covar)),
 ##                n=nrow(tmb.hmc10.covar))
@@ -397,7 +397,7 @@ test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 ## tmb.rwm.covar$LP <- -apply(tmb.rwm.covar, 1, model.tmb$fn)
 ## perf.tmb.rwm.covar <- time.tmb.rwm.covar/(100*min(effectiveSize(tmb.rwm.covar))/nrow(tmb.rwm.covar))
 ## perf.list[['tmb.rwm.covar']] <-
-##     data.frame(model='growth', platform='tmb.rwm.covar',time=time.tmb.rwm.covar,
+##     data.frame(model='growth_t', platform='tmb.rwm.covar',time=time.tmb.rwm.covar,
 ##                minESS=min(effectiveSize(tmb.rwm.covar)),
 ##                medianESS=median(effectiveSize(tmb.rwm.covar)),
 ##                n=nrow(tmb.rwm.covar))
