@@ -1,5 +1,5 @@
 
-message("Generating growth data")
+message("Generating growth_t data")
 ## Global parameters
 logLinf.mean <- log(50)
 logk.mean <- log(.1)
@@ -20,7 +20,7 @@ sample.lengths <- function(Nfish, n.ages){
     Linf.vec <- exp(logLinf.mean + rnorm(n=Nfish, 0, sd=logLinf.sigma))
     k.vec <- exp(logk.mean +rnorm(n=Nfish, mean=0, sd=logk.sigma))
     dat <- ldply(1:Nfish, function(i) cbind(fish=i, sample.vbgf(ages=sample.ages(n.ages), Linf=Linf.vec[i], k=k.vec[i])))
-    saveRDS(dat, paste0('growth_data_',Nfish,'.RDS'))
+    saveRDS(dat, paste0('growth_t_data_',Nfish,'.RDS'))
     dat
 }
 ## set.seed(5)
@@ -28,14 +28,14 @@ sample.lengths <- function(Nfish, n.ages){
 ## dat.plot <- sample.lengths(Nfish=50, n.ages=5)
 ## g <- ggplot(dat.plot, aes(ages, lengths, group=fish)) +
 ##     geom_point(alpha=.5)
-## ggsave('plots/simulated_growth.png', g, width=9, height=5)
+## ggsave('plots/simulated_growth_t.png', g, width=9, height=5)
 ## plot(ddply(dat.plot, .(ages), summarize, CV=sd(lengths)/mean(lengths)))
 ## sigma.obs <- .08
 ## set.seed(5)
 ## dat.plot <- sample.lengths(Nfish=50, n.ages=5)
 ## g <- ggplot(dat.plot, aes(ages, lengths, group=fish))+
 ##     geom_point(alpha=.5)
-## ggsave('plots/observed_growth.png', g, width=9, height=5)
+## ggsave('plots/observed_growth_t.png', g, width=9, height=5)
 
 set.seed(5)
 dat <- sample.lengths(Nfish=Nfish, n.ages=5)
@@ -47,7 +47,7 @@ init <- list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logk=rep(logk.mean, len=Nfish))
 
 ### ------------------------------------------------------------
-message("Loading growth models into the workspace")
+message("Loading growth_t models into the workspace")
 ## JAGS models
 data.jags <- data
 params.jags <-
@@ -65,8 +65,8 @@ model.jags <- function(){
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Nfish){
-        logLinf[i]~dt(logLinf_mean, pow(logLinf_sigma, -2), 30)
-        logk[i]~dt(logk_mean, pow(logk_sigma, -2), 30)
+        logLinf[i]~dnorm(logLinf_mean, pow(logLinf_sigma, -2))
+        logk[i]~dnorm(logk_mean, pow(logk_sigma, -2))
     }
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
@@ -76,11 +76,11 @@ model.jags <- function(){
         ## ypred[i] <- logLinf[fish[i]]+
         ##     log( (1-exp(-exp(logk[fish[i]])*ages[i])))
         ## Likelihood of data
-        loglengths[i]~dt(log(ypred[i]), pow(sigma_obs, -2), 30)
+        loglengths[i]~dnorm(log(ypred[i]), pow(sigma_obs, -2))
     }
 }
 
-## temp <- jags(data=data.jags, inits=list(init), param=params.jags[1:5], model.file=model.jags,
+## temp <- jags(data=data.jags, inits=list(init), param=params.jags, model.file=model.jags,
 ##      n.chains=1, n.burnin=1000, n.iter=5000, n.thin=1)
 ## xx <- data.frame(temp$BUGSoutput$sims.list)
 ## ## acf(xx)
@@ -108,7 +108,7 @@ data.stan <- data
 ## Run a dummy chain to get the compilation out of the way for more
 ## sensible speed comparisons
 inits.stan <- list(init)
-model.stan <- stan(file='growth.stan', data=data.stan, iter=50, chains=1,
+model.stan <- stan(file='growth_t.stan', data=data.stan, iter=50, chains=1,
                    warmup=10, thin=1, init=inits.stan)
 ## temp <- stan(fit=model.stan, data=data.stan, iter=5000, chains=1,
 ##                    warmup=1000, thin=1, init=inits.stan)
@@ -126,7 +126,7 @@ model.stan <- stan(file='growth.stan', data=data.stan, iter=50, chains=1,
 ## lines(a, log(exp(logLinf.mean)*(1-exp(-exp(logk.mean)*(a-5)))))
 ## lines(a, log(exp(mean(yy$logLinf_mean))*(1-exp(-exp(mean(yy$logk_mean))*(a-5)))))
 
-## acf(xx[,1:6])
+## acf(xx)
 ## acf(yy[,1:6])
 
 ## par(mfrow=c(2,3))
@@ -141,7 +141,7 @@ model.stan <- stan(file='growth.stan', data=data.stan, iter=50, chains=1,
 ## End of Stan
 ### ------------------------------------------------------------
 
-message("Finished loading growth models")
+message("Finished loading growth_t models")
 
 
 ## model.R <- function(Linf_mean, Linf_sigma, k_mean, k_sigma, sigma_obs,

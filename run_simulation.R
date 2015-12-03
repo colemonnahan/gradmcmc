@@ -11,6 +11,12 @@
 ## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
 
+source("growth/run_chains.R")
+source("growth_t/run_chains.R")
+
+
+
+
 
 ## Parameters for the short chains, long ones (to verify models are the
 ## same) are specified in each file and differ.

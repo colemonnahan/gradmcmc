@@ -2,19 +2,15 @@
 ## hook
 
 setwd('growth')
-
-Nout <- 2000
+Nout <- 5000
 stan.burnin <- 2000
 jags.burnin <- 2000
 n.thin <- 5
-
-
-## Load the models
 Nfish <- 100                           # this sets the dimension of the model
 perf.list <- list()
 adapt.list <- list()
 
-for(Nfish in c(10,100, 500, 1000)){
+for(Nfish in c(10,100, 500, 1000, 2000)){
 ### ------------------------------------------------------------
 source("load_models.R")
 ## Now run single long chains without thinning and timing to get
@@ -28,13 +24,14 @@ temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
 time.jags <-
     as.vector(system.time(results.jags <- update(temp, n.iter=n.thin*Nout, n.thin=n.thin))[3])
 sims.jags <- results.jags$BUGSoutput$sims.array
-saveRDS(sims.jags, file=paste0('results/sims.jags.', Nfish, '.RDS'))
+## saveRDS(sims.jags, file=paste0('results/sims.jags.', Nfish, '.RDS'))
 perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE))
 perf.list[[paste0('jags.',Nfish)]] <-
     data.frame(model='growth', platform='jags',time=time.jags,
                minESS=min(perf.jags$n_eff), Nfish=Nfish,
                medianESS=median(perf.jags$n_eff),
                n=dim(sims.jags)[1])
+rm(temp, sims.jags, perf.jags)
 ## Use adaptation for eps and diagonal covariances, but remove those
 ## samples and time it took
 message('Starting stan.nuts model')
@@ -46,17 +43,14 @@ results.stan.nuts <-
 adapt.list[[paste0('stan.nuts.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.nuts))
 time.stan.nuts <- get_elapsed_time(results.stan.nuts)[2]
 sims.stan.nuts <- extract(results.stan.nuts, permuted=FALSE)
-saveRDS(sims.stan.nuts, file=paste0('results/sims.stan.nuts.', Nfish, '.RDS'))
+## saveRDS(sims.stan.nuts, file=paste0('results/sims.stan.nuts.', Nfish, '.RDS'))
 perf.stan.nuts <- data.frame(rstan::monitor(sims=sims.stan.nuts, warmup=0, print=FALSE))
 perf.list[[paste0('stan.nuts.',Nfish)]] <-
     data.frame(model='growth', platform='stan.nuts',time=time.stan.nuts,
                minESS=min(perf.stan.nuts$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.nuts$n_eff),
                n=dim(sims.stan.nuts)[1])
-par(mfrow=c(1,3))
-acf(sims.stan.nuts[,,4])
-plot(sims.stan.nuts[,,4])
-hist(sims.stan.nuts[,,4])
+rm(results.stan.nuts, sims.stan.nuts, perf.stan.nuts)
 message('Starting stan.hmc1 model')
 results.stan.hmc1 <-
     stan(fit=model.stan, data=data.stan, iter=n.thin*Nout+stan.burnin,
@@ -65,28 +59,51 @@ results.stan.hmc1 <-
 adapt.list[[paste0('stan.hmc1.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.hmc1))
 time.stan.hmc1 <- get_elapsed_time(results.stan.hmc1)[2]
 sims.stan.hmc1 <- extract(results.stan.hmc1, permuted=FALSE)
-saveRDS(sims.stan.hmc1, file=paste0('results/sims.stan.hmc1.', Nfish, '.RDS'))
+## saveRDS(sims.stan.hmc1, file=paste0('results/sims.stan.hmc1.', Nfish, '.RDS'))
 perf.stan.hmc1 <- data.frame(rstan::monitor(sims=sims.stan.hmc1, warmup=0, print=FALSE))
 perf.list[[paste0('stan.hmc1.',Nfish)]] <-
     data.frame(model='growth', platform='stan.hmc1',time=time.stan.hmc1,
                minESS=min(perf.stan.hmc1$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.hmc1$n_eff),
                n=dim(sims.stan.hmc1)[1])
+rm(results.stan.hmc1, sims.stan.hmc1, perf.stan.hmc1)
 message('Starting stan.hmc10 model')
 results.stan.hmc10 <-
     stan(fit=model.stan, data=data.stan, iter=n.thin*Nout+stan.burnin,
          warmup=stan.burnin, chains=1, thin=n.thin, algorithm='HMC',
-         init=inits.stan, control=list(adapt_engaged=TRUE, int_time=1))
+         init=inits.stan, control=list(adapt_engaged=TRUE, int_time=10))
 adapt.list[[paste0('stan.hmc10.',Nfish)]] <- as.data.frame(get_sampler_params(results.stan.hmc10))
 time.stan.hmc10 <- get_elapsed_time(results.stan.hmc10)[2]
 sims.stan.hmc10 <- extract(results.stan.hmc10, permuted=FALSE)
-saveRDS(sims.stan.hmc10, file=paste0('results/sims.stan.hmc10.', Nfish, '.RDS'))
+## saveRDS(sims.stan.hmc10, file=paste0('results/sims.stan.hmc10.', Nfish, '.RDS'))
 perf.stan.hmc10 <- data.frame(rstan::monitor(sims=sims.stan.hmc10, warmup=0, print=FALSE))
 perf.list[[paste0('stan.hmc10.',Nfish)]] <-
     data.frame(model='growth', platform='stan.hmc10',time=time.stan.hmc10,
                minESS=min(perf.stan.hmc10$n_eff), Nfish=Nfish,
                medianESS=median(perf.stan.hmc10$n_eff),
                n=dim(sims.stan.hmc10)[1])
+rm(results.stan.hmc10, sims.stan.hmc10, perf.stan.hmc10)
+saveRDS(perf.list, 'results/perf.list.RDS')
+saveRDS(adapt.list, 'results/adapt.list.RDS')
+}
+
+message("Making  plots")
+perf.list <- readRDS('results/perf.list.RDS')
+perf <- do.call(rbind, perf.list)
+perf$samples.per.time <- perf$minESS/perf$time
+perf$pct.ess <- 100*perf$minESS/perf$n
+perf$N.parameters <- with(perf, 5+2*Nfish)
+perf[,c('platform', 'n')]
+ggplot(perf, aes(N.parameters, time, group=platform, color=platform))+geom_line()+geom_point()
+ggsave('plots/growth_perf_time.png', width=12, height=5)
+ggplot(perf, aes(N.parameters, pct.ess, group=platform, color=platform))+geom_line()+geom_point()
+ggsave('plots/growth_perf_pctess.png', width=12, height=5)
+ggplot(perf, aes(N.parameters, medianESS, group=platform, color=platform))+geom_line()+geom_point()
+ggsave('plots/growth_perf_medianESS.png', width=12, height=5)
+ggplot(perf, aes(N.parameters, log(samples.per.time), group=platform, color=platform))+geom_line()+geom_point()
+ggsave('plots/growth_perf_perf.png', width=12, height=5)
+
+## ## Make sure Stan is adapting well enough
 ## message("Making cumulative minESS plots")
 ## x.jags <- cbind('software'='jags', cum.minESS(sims.jags))
 ## x.stan.nuts <- cbind('software'='stan.nuts', cum.minESS(sims.stan.nuts))
@@ -96,67 +113,47 @@ perf.list[[paste0('stan.hmc10.',Nfish)]] <-
 ## ggplot(x, aes(iteration, pct.ess, group=software, color=software))+geom_line()
 ## ggsave(paste0('plots/growth_cum_miness_',Nfish,'.png'), width=7,
 ## height=5)
-saveRDS(perf.list, 'results/perf.list.RDS')
-}
+## par(mfrow=c(3,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
+## myylim <- c(0,1)
+## plot(adapt.list[['stan.nuts.10']]$stepsize__, ylim=myylim)
+## mtext
+## plot(adapt.list[['stan.nuts.100']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.500']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.1000']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.10']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.100']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.500']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.1000']]$accept_stat__, ylim=myylim)
+## myylim <- c(0,100)
+## plot(adapt.list[['stan.nuts.10']]$n_leapfrog__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.100']]$n_leapfrog__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.500']]$n_leapfrog__, ylim=myylim)
+## plot(adapt.list[['stan.nuts.1000']]$n_leapfrog__, ylim=myylim)
+
+## par(mfrow=c(2,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
+## myylim <- c(0,1)
+## plot(adapt.list[['stan.hmc1.10']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.100']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.500']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.1000']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.10']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.100']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.500']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.hmc1.1000']]$accept_stat__, ylim=myylim)
+
+## par(mfrow=c(2,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
+## myylim <- c(0,1)
+## plot(adapt.list[['stan.hmc10.10']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.100']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.500']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.1000']]$stepsize__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.10']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.100']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.500']]$accept_stat__, ylim=myylim)
+## plot(adapt.list[['stan.hmc10.1000']]$accept_stat__, ylim=myylim)
 
 
-message("Making  plots")
-perf.list <- readRDS('results/perf.list.RDS')
-perf <- do.call(rbind, perf.list)
-perf$samples.per.time <- perf$minESS/perf$time
-perf$pct.ess <- 100*perf$minESS/perf$n
-perf[,c('platform', 'n')]
-ggplot(perf, aes(Nfish, time, group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_time.png', width=12, height=5)
-ggplot(perf, aes(Nfish, pct.ess, group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_pctess.png', width=12, height=5)
-ggplot(perf, aes(Nfish, medianESS, group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_medianESS.png', width=12, height=5)
-ggplot(perf, aes(Nfish, log(samples.per.time), group=platform, color=platform))+geom_line()+geom_point()
-ggsave('plots/growth_perf_perf.png', width=12, height=5)
-
-## Make sure Stan is adapting well enough
-par(mfrow=c(3,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
-myylim <- c(0,1)
-plot(adapt.list[['stan.nuts.10']]$stepsize__, ylim=myylim)
-mtext
-plot(adapt.list[['stan.nuts.100']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.nuts.500']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.nuts.1000']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.nuts.10']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.nuts.100']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.nuts.500']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.nuts.1000']]$accept_stat__, ylim=myylim)
-myylim <- c(0,100)
-plot(adapt.list[['stan.nuts.10']]$n_leapfrog__, ylim=myylim)
-plot(adapt.list[['stan.nuts.100']]$n_leapfrog__, ylim=myylim)
-plot(adapt.list[['stan.nuts.500']]$n_leapfrog__, ylim=myylim)
-plot(adapt.list[['stan.nuts.1000']]$n_leapfrog__, ylim=myylim)
-
-par(mfrow=c(2,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
-myylim <- c(0,1)
-plot(adapt.list[['stan.hmc1.10']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.100']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.500']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.1000']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.10']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.100']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.500']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.hmc1.1000']]$accept_stat__, ylim=myylim)
-
-par(mfrow=c(2,4), mar=c(3,3,.5,.5), oma=c(0,0,0,0))
-myylim <- c(0,1)
-plot(adapt.list[['stan.hmc10.10']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.100']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.500']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.1000']]$stepsize__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.10']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.100']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.500']]$accept_stat__, ylim=myylim)
-plot(adapt.list[['stan.hmc10.1000']]$accept_stat__, ylim=myylim)
-
-
-test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
+## test <- do.call(rbind, adapt.list[[-grep('nuts',names(adapt.list))]])
 
 ## ### ------------------------------------------------------------
 ## ## Run a long chain with thinning to get independent samples to make sure
