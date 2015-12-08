@@ -14,17 +14,14 @@ Nout <- 1000
 n.burnin <- 1000
 n.thin <- 1
 
-Nfish.vec <- c(5, 10, 25)
+Nfish.vec <- c(5, 10, 25, 50, 100, 200, 500)
 L.vec <- c(1,5,20)
-seeds <- c(4,6,1,90)
+seeds <- c(4,6,1,90,15)
 source("growth/run_chains.R")
-
 source("growth_t/run_chains.R")
 
-growth.list <- readRDS('growth/results/perf.list.RDS')
-growth <- do.call(rbind, do.call(rbind, growth.list))
-growth_t.list <- readRDS('growth_t/results/perf.list.RDS')
-growth_t <- do.call(rbind, do.call(rbind, growth_t.list))
+growth <- readRDS('growth/results/perf.RDS')
+growth_t <- readRDS('growth_t/results/perf.RDS')
 growth.df <- rbind(growth, growth_t)
 growth.df$samples.per.time <- growth.df$minESS/growth.df$time
 growth.df$minESS <- 100*growth.df$minESS/growth.df$Npar
@@ -39,18 +36,6 @@ ggplot(growth.df.long, aes(Npar, log(value), color=platform)) +
             facet_grid(model~variable)
 ggplot(growth.df.wide, aes(growth, growth_t, group=platform, color=platform)) +
     geom_point()
-
-
-ggsave('plots/growth_perf_minESS.png', width=9, height=5)
-ggplot(growth.df, aes(Npar, log(medianESS), group=platform,
-                  color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
-                      geom_line(data=growth.df, aes(Npar, log(mean.medianESS)))
-ggsave('plots/growth_perf_medianESS.png', width=9, height=5)
-ggplot(growth.df, aes(Npar, log(samples.per.time), group=platform,
-                  color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
-                      geom_line(data=growth.df, aes(Npar, log(mean.samples.per.time)))
-ggsave('plots/growth_perf_time.png', width=9, height=5)
-
 
 
 ## Parameters for the short chains, long ones (to verify models are the

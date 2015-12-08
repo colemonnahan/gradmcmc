@@ -79,6 +79,7 @@ run.chains <- function(model.name, seeds, Nout, L,
         }
         message(paste('==== Starting seed',seed, 'at', Sys.time()))
         set.seed(seed)
+        message('Starting JAGS model')
         temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
                            model.file=model.jags, n.chains=1, DIC=FALSE,
                            n.iter=n.burnin+10, n.burnin=n.burnin, n.thin=1)
@@ -146,8 +147,7 @@ run.chains <- function(model.name, seeds, Nout, L,
     return(invisible(list(adapt.list=adapt.list, perf.list=perf.list)))
 }
 
-plot.model.results <- function(perf.list, adapt.list){
-    perf <- do.call(rbind, do.call(rbind, perf.list))
+plot.model.results <- function(perf, adapt){
     model.name <- as.character(perf$model[1])
     perf$samples.per.time <- perf$minESS/perf$time
     perf$minESS <- 100*perf$minESS/perf$Npar
@@ -159,7 +159,6 @@ plot.model.results <- function(perf.list, adapt.list){
             geom_line(data=perf.long, aes(Npar, log(mean.value))) +
                 facet_wrap('variable') + ggtitle("Performance Comparison")
     ggsave(paste0('plots/',model.name, '_perf_time.png'), g, width=ggwidth, height=ggheight)
-    adapt <- do.call(rbind.fill, do.call(rbind, adapt.list))
     adapt$log.stepsize=log(adapt$stepsize__)
     adapt.long <- melt(adapt, c('model', 'alg', 'seed', 'Npar', 'Nsims', 'iteration'))
     g <- ggplot(adapt, aes(iteration, log.stepsize, group=seed, color=factor(seed))) +

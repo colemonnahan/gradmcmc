@@ -44,7 +44,6 @@ init <- list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logLinf=rep(logLinf.mean, len=Nfish),
                   logk=rep(logk.mean, len=Nfish))
 ### ------------------------------------------------------------
-message("Loading growth models into the workspace")
 ## JAGS models
 data.jags <- data
 params.jags <-
