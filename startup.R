@@ -173,19 +173,6 @@ plot.model.results <- function(perf.list, adapt.list){
                             scales='free') + ggtitle('NUTS tuning metrics')
     ggsave(paste0('plots/',model.name, '_adapt_NUTS.png'), g, width=ggwidth, height=ggheight)
 }
-## ## Use this to make function to compare between models later
-## ggplot(perf, aes(Npar, log(minESS), group=platform,
-##                   color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
-##                       geom_line(data=perf, aes(Npar, log(mean.minESS)))
-## ggsave('plots/growth_perf_minESS.png', width=9, height=5)
-## ggplot(perf, aes(Npar, log(medianESS), group=platform,
-##                   color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
-##                       geom_line(data=perf, aes(Npar, log(mean.medianESS)))
-## ggsave('plots/growth_perf_medianESS.png', width=9, height=5)
-## ggplot(perf, aes(Npar, log(samples.per.time), group=platform,
-##                   color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
-##                       geom_line(data=perf, aes(Npar, log(mean.samples.per.time)))
-## ggsave('plots/growth_perf_time.png', width=9, height=5)
 
 
 

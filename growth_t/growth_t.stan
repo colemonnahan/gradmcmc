@@ -27,8 +27,8 @@ model {
  real k;
  real ypred[Nobs];
  // hyperparams
- logLinf~student_t(30, logLinf_mean, logLinf_sigma);
- logk~student_t(30,logk_mean, logk_sigma);
+ logLinf~student_t(100, logLinf_mean, logLinf_sigma);
+ logk~student_t(100,logk_mean, logk_sigma);
 
  // calculate likelihood of data
  for(i in 1:Nobs){
@@ -36,5 +36,5 @@ model {
   k <- exp(logk[fish[i]]);
   ypred[i] <- log(Linf*(1-exp(-k*(ages[i]-5))));
  }
-  loglengths~student_t(30, ypred, sigma_obs);
+  loglengths~student_t(100, ypred, sigma_obs);
 }

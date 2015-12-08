@@ -10,18 +10,46 @@
 ## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
 ## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
-Nout <- 2000
-n.burnin <- 2000
-n.thin <- 50
+Nout <- 1000
+n.burnin <- 1000
+n.thin <- 1
 
-Nfish.vec <- c(5, 10, 25, 50, 100, 200, 500)
+Nfish.vec <- c(5, 10, 25)
 L.vec <- c(1,5,20)
 seeds <- c(4,6,1,90)
 source("growth/run_chains.R")
 
 source("growth_t/run_chains.R")
 
+growth.list <- readRDS('growth/results/perf.list.RDS')
+growth <- do.call(rbind, do.call(rbind, growth.list))
+growth_t.list <- readRDS('growth_t/results/perf.list.RDS')
+growth_t <- do.call(rbind, do.call(rbind, growth_t.list))
+growth.df <- rbind(growth, growth_t)
+growth.df$samples.per.time <- growth.df$minESS/growth.df$time
+growth.df$minESS <- 100*growth.df$minESS/growth.df$Npar
+growth.df.long <- melt(growth.df, c('model', 'platform', 'seed', 'Npar', 'Nsims'))
+growth.df.long <- ddply(growth.df.long, .(platform, Npar, variable, model), mutate,
+                       mean.value=mean(value))
+growth.df.wide <- dcast(growth.df, platform+seed+Npar~model, value.var='time')
+## Use this to make function to compare between models later
+ggplot(growth.df.long, aes(Npar, log(value), color=platform)) +
+    geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
+        geom_line(data=growth.df.long, aes(Npar, log(mean.value))) +
+            facet_grid(model~variable)
+ggplot(growth.df.wide, aes(growth, growth_t, group=platform, color=platform)) +
+    geom_point()
 
+
+ggsave('plots/growth_perf_minESS.png', width=9, height=5)
+ggplot(growth.df, aes(Npar, log(medianESS), group=platform,
+                  color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
+                      geom_line(data=growth.df, aes(Npar, log(mean.medianESS)))
+ggsave('plots/growth_perf_medianESS.png', width=9, height=5)
+ggplot(growth.df, aes(Npar, log(samples.per.time), group=platform,
+                  color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
+                      geom_line(data=growth.df, aes(Npar, log(mean.samples.per.time)))
+ggsave('plots/growth_perf_time.png', width=9, height=5)
 
 
 
