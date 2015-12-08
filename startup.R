@@ -57,9 +57,9 @@ cum.minESS <- function(df, breaks=5){
 #' @param stan.burnin The length of burnin for Stan
 #' @param jags.burnin The length of burnin for JAGS
 #' @param n.thin The thinning rate.
-#' @param sink Whether to sink console output to file "sink_progress.txt"
-#' to cleanup console output. Defaults to TRUE. Makes it easier to see the
-#' progress on the console.
+#' @param sink Whether to sink console output to trash file to cleanup
+#' console output. Defaults to TRUE. Makes it easier to see the progress on
+#' the console.
 #' @return A list of two lists. adapt.list is the adaptive results from
 #' Stan, and perf.list is the performance metrics for each run.
 run.chains <- function(model.name, seeds, Nout, L,
@@ -74,7 +74,7 @@ run.chains <- function(model.name, seeds, Nout, L,
         ## performance (minESS/time) for each of the methods
         ## Run a long one to ensure good tuning
         if(sink){
-            sink(file='sink_progress.txt', append=TRUE, type='output')
+            sink(file='trash.txt', append=FALSE, type='output')
             on.exit(sink())
         }
         message(paste("Starting run at", Sys.time()))
