@@ -2,7 +2,6 @@
 ## The purpose of this file is to prepare the models for running later. May
 ## need to refresh/create data or not depending on the model. The models
 ## are loaded into the workspace and used later on.
-message("Generating growth_t data")
 ## Generate data
 logLinf.mean <- log(50)
 logk.mean <- log(.1)

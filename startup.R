@@ -77,8 +77,7 @@ run.chains <- function(model.name, seeds, Nout, L,
             sink(file='trash.txt', append=FALSE, type='output')
             on.exit(sink())
         }
-        message(paste("Starting run at", Sys.time()))
-        message(paste('Starting seed',seed))
+        message(paste('==== Starting seed',seed, 'at', Sys.time()))
         set.seed(seed)
         temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
                            model.file=model.jags, n.chains=1, DIC=FALSE,
