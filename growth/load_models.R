@@ -21,7 +21,7 @@ sample.lengths <- function(Nfish, n.ages){
     Linf.vec <- exp(logLinf.mean + rnorm(n=Nfish, 0, sd=logLinf.sigma))
     k.vec <- exp(logk.mean +rnorm(n=Nfish, mean=0, sd=logk.sigma))
     dat <- ldply(1:Nfish, function(i) cbind(fish=i, sample.vbgf(ages=sample.ages(n.ages), Linf=Linf.vec[i], k=k.vec[i])))
-    saveRDS(dat, paste0('growth_data_',Nfish,'.RDS'))
+    ## saveRDS(dat, paste0('growth_data_',Nfish,'.RDS'))
     dat
 }
 ## set.seed(5)

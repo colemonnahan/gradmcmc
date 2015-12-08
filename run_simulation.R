@@ -10,8 +10,8 @@
 ## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
 ## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
-Nout <- 1000
-n.burnin <- 500
+Nout <- 500
+n.burnin <- 200
 n.thin <- 1
 
 Nfish.vec <- c(10, 50, 100)
