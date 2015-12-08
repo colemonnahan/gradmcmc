@@ -1,21 +1,5 @@
 ## This assumes the working directory is in the same folder as this file.
 ## main.dir <- paste0(getwd(), '/')
-main.dir <- 'C:/Users/Cole/gradmcmc/'
-ggwidth <- 8
-ggheight <- 5
-results.file <- function(file) paste0(main.dir,'results/', file)
-plots.file <- function(file) paste0(main.dir,'plots/', file)
-figures.file <- function(file) paste0(main.dir,'paper/figures/', file)
-
-#' @param d Dimension of matrix
-#' @param covar The covariance for off diagonals. Assumed the same for all
-#' pairs of parameters.
-#' @return A Hessian matrix (inverse of covariance matrix).
-make.covar <- function(d, covar){
-    x <- matrix(covar, nrow=d, ncol=d)
-    diag(x) <- 1
-    x
-}
 ## load libraries and such
 library(coda)
 library(TMB)
@@ -25,7 +9,23 @@ library(rstan)
 library(R2jags)
 library(snowfall)
 library(reshape2)
+main.dir <- 'C:/Users/Cole/gradmcmc/'
+ggwidth <- 8
+ggheight <- 5
 
+## Functions
+results.file <- function(file) paste0(main.dir,'results/', file)
+plots.file <- function(file) paste0(main.dir,'plots/', file)
+figures.file <- function(file) paste0(main.dir,'paper/figures/', file)
+#' @param d Dimension of matrix
+#' @param covar The covariance for off diagonals. Assumed the same for all
+#' pairs of parameters.
+#' @return A Hessian matrix (inverse of covariance matrix).
+make.covar <- function(d, covar){
+    x <- matrix(covar, nrow=d, ncol=d)
+    diag(x) <- 1
+    x
+}
 ## TMB bounding functions, copied from  ADMB
 boundpinv <- function(x, min, max){
     -log( (max-min)/(x-min) -1)
@@ -33,7 +33,6 @@ boundpinv <- function(x, min, max){
 boundp <- function(x, min, max){
     min + (max-min)/(1+exp(-x))
 }
-
 ## Get cumulative minimum ESS as a percentage
 cum.minESS <- function(df, breaks=5){
     x <- floor(seq(1, dim(df)[1], len=breaks))
@@ -45,44 +44,6 @@ cum.minESS <- function(df, breaks=5){
  })
     do.call(rbind, y)
 }
-
-## ## wrappers to run chains and return ESS and other metrics
-## run_hmc <- function(obj, nsim, eps, L, covar=NULL, seed=NULL, diag=FALSE){
-##     if(!is.null(seed)) set.seed(seed)
-##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="HMC", L=L,
-##                     eps=eps, diagnostic=TRUE, covar=covar, Madapt=Madapt)
-##     ## discard the warmup
-##     par <- x1$par[-(1:Madapt),]
-##     minESS <- min(as.vector(coda::effectiveSize(par)))
-##     x2 <- data.frame(covar=!is.null(covar), tuning=eps, algorithm='hmc', L=L, seed=seed,
-##                      time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
-##                      perf=log10(x1$time/minESS))
-##     if(diag) return(x1) else return(x2)
-## }
-## run_nuts <- function(obj, nsim, inits=NULL, covar=NULL, delta, seed=NULL,
-##                      Madapt, diag=FALSE, max_doubling=4){
-##     if(!is.null(seed)) set.seed(seed)
-##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="NUTS", diagnostic=TRUE, max_doubling=max_doubling,
-##                    covar=covar, delta=delta, Madapt=Madapt, params.init=inits)
-##     ## discard the warmup
-##     par <- x1$par[-(1:Madapt),]
-##     minESS <- min(as.vector(coda::effectiveSize(par)))
-##     x2 <- data.frame(covar=!is.null(covar), tuning=delta, algorithm='nuts',
-##                      seed=seed, time=x1$time, minESS=minESS, acceptance=NA,
-##                      perf=log10(x1$time/minESS))
-##     if(diag) return(x1) else return(x2)
-## }
-## run_rwm <- function(obj, nsim, alpha, covar, seed=NULL, ...){
-##     if(!is.null(seed)) set.seed(seed)
-##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="RWM", diagnostic=TRUE,
-##                    covar=covar, alpha=alpha, ...)
-##     minESS <- min(as.vector(coda::effectiveSize(x1$par)))
-##     x2 <- data.frame(covar=!is.null(covar), tuning=alpha, algorithm='rwm', seed=seed,
-##                      time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
-##                      perf=log10(x1$time/minESS))
-##     return(x2)
-## }
-
 
 #' @param model.name Character string for model name
 #' @param model.jags A compiled JAGS model. This will be updated in the
@@ -96,12 +57,15 @@ cum.minESS <- function(df, breaks=5){
 #' @param stan.burnin The length of burnin for Stan
 #' @param jags.burnin The length of burnin for JAGS
 #' @param n.thin The thinning rate.
+#' @param sink Whether to sink console output to file "sink_progress.txt"
+#' to cleanup console output. Defaults to TRUE. Makes it easier to see the
+#' progress on the console.
 #' @return A list of two lists. adapt.list is the adaptive results from
 #' Stan, and perf.list is the performance metrics for each run.
 run.chains <- function(model.name, seeds, Nout, L,
                        model.jags, data.jags, inits.jags, params.jags,
                        model.stan, data.stan, inits.stan, params.stan,
-                       n.burnin, n.thin){
+                       n.burnin, n.thin, sink=TRUE){
     perf.list <- list()
     adapt.list <- list()
     k <- 1
@@ -109,6 +73,11 @@ run.chains <- function(model.name, seeds, Nout, L,
         ## Now run single long chains without thinning and timing to get
         ## performance (minESS/time) for each of the methods
         ## Run a long one to ensure good tuning
+        if(sink){
+            sink(file='sink_progress.txt', append=TRUE, type='output')
+            on.exit(sink())
+        }
+        message(paste("Starting run at", Sys.time()))
         message(paste('Starting seed',seed))
         set.seed(seed)
         temp <- jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
@@ -217,3 +186,67 @@ plot.model.results <- function(perf.list, adapt.list){
 ##                   color=platform))+geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
 ##                       geom_line(data=perf, aes(Npar, log(mean.samples.per.time)))
 ## ggsave('plots/growth_perf_time.png', width=9, height=5)
+
+
+
+### ------------------------------------------------------------
+### OLD FUNCTIONS
+## ## wrappers to run chains and return ESS and other metrics
+## run_hmc <- function(obj, nsim, eps, L, covar=NULL, seed=NULL, diag=FALSE){
+##     if(!is.null(seed)) set.seed(seed)
+##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="HMC", L=L,
+##                     eps=eps, diagnostic=TRUE, covar=covar, Madapt=Madapt)
+##     ## discard the warmup
+##     par <- x1$par[-(1:Madapt),]
+##     minESS <- min(as.vector(coda::effectiveSize(par)))
+##     x2 <- data.frame(covar=!is.null(covar), tuning=eps, algorithm='hmc', L=L, seed=seed,
+##                      time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
+##                      perf=log10(x1$time/minESS))
+##     if(diag) return(x1) else return(x2)
+## }
+## run_nuts <- function(obj, nsim, inits=NULL, covar=NULL, delta, seed=NULL,
+##                      Madapt, diag=FALSE, max_doubling=4){
+##     if(!is.null(seed)) set.seed(seed)
+##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="NUTS", diagnostic=TRUE, max_doubling=max_doubling,
+##                    covar=covar, delta=delta, Madapt=Madapt, params.init=inits)
+##     ## discard the warmup
+##     par <- x1$par[-(1:Madapt),]
+##     minESS <- min(as.vector(coda::effectiveSize(par)))
+##     x2 <- data.frame(covar=!is.null(covar), tuning=delta, algorithm='nuts',
+##                      seed=seed, time=x1$time, minESS=minESS, acceptance=NA,
+##                      perf=log10(x1$time/minESS))
+##     if(diag) return(x1) else return(x2)
+## }
+## run_rwm <- function(obj, nsim, alpha, covar, seed=NULL, ...){
+##     if(!is.null(seed)) set.seed(seed)
+##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="RWM", diagnostic=TRUE,
+##                    covar=covar, alpha=alpha, ...)
+##     minESS <- min(as.vector(coda::effectiveSize(x1$par)))
+##     x2 <- data.frame(covar=!is.null(covar), tuning=alpha, algorithm='rwm', seed=seed,
+##                      time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
+##                      perf=log10(x1$time/minESS))
+##     return(x2)
+## }
+## make.trace <- function(df.thinned, model, string){
+##     nrows <- ceiling(sqrt(ncol(df.thinned)))
+##     png(paste0('plots/', model, '.trace.', string,'.png'), width=9, height=6,
+##         units='in', res=500)
+##     par(mfrow=c(nrows,nrows), mar=.1*c(1,1,1,1))
+##     for(i in 1:ncol(df.thinned)){
+##         plot(df.thinned[,i], type='l', axes=FALSE,
+##              ylim=range(df.thinned[,i]), col=rgb(0,0,0,.5)); box()
+##         title(names(df.thinned)[i], line=-1)
+##     }
+##     dev.off()
+## }
+## make.acf <- function(df, model, string){
+##     nrows <- ceiling(sqrt(ncol(df)))
+##     png(paste0('plots/', model, '.acf.', string,'.png'), width=9, height=6,
+##         units='in', res=500)
+##     par(mfrow=c(nrows,nrows), mar=.1*c(1,1,1,1))
+##     for(i in 1:ncol(df)) {
+##         acf(df[,i], axes=FALSE);box()
+##         title(names(df)[i], line=-1)
+##     }
+##     dev.off()
+## }

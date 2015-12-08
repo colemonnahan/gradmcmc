@@ -3,6 +3,7 @@
 
 setwd('growth')
 xx <- list()
+file.remove('sink_progress.txt')
 for(Nfish in Nfish.vec){
     ## Reproducible data since seed set inside the function
     set.seed(115)
