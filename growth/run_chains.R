@@ -6,6 +6,7 @@ xx <- list()
 file.remove('sink_progress.txt')
 for(Nfish in Nfish.vec){
     ## Reproducible data since seed set inside the function
+    message(paste("======== Starting Nfish=", Nfish))
     set.seed(115)
     source("load_models.R")
     xx[[Nfish]] <-

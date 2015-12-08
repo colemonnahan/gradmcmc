@@ -10,13 +10,13 @@
 ## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
 ## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
-Nout <- 500
-n.burnin <- 200
-n.thin <- 1
+Nout <- 2000
+n.burnin <- 2000
+n.thin <- 50
 
-Nfish.vec <- c(10, 50, 100)
-L.vec <- c(1,5,25)
-seeds <- c(4,6,1)
+Nfish.vec <- c(5, 10, 25, 50, 100, 200, 500)
+L.vec <- c(1,5,20)
+seeds <- c(4,6,1,90)
 source("growth/run_chains.R")
 
 source("growth_t/run_chains.R")
