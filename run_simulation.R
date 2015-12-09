@@ -30,13 +30,15 @@ growth.df.long <- ddply(growth.df.long, .(platform, Npar, variable, model), muta
                        mean.value=mean(value))
 growth.df.wide <- dcast(growth.df, platform+seed+Npar~model, value.var='time')
 ## Use this to make function to compare between models later
-ggplot(growth.df.long, aes(Npar, log(value), color=platform)) +
+g <- ggplot(growth.df.long, aes(Npar, log(value), color=platform)) +
     geom_jitter(position=position_jitter(width=.5, height=0), alpha=.5) +
         geom_line(data=growth.df.long, aes(Npar, log(mean.value))) +
             facet_grid(model~variable)
-ggplot(growth.df.wide, aes(growth, growth_t, group=platform, color=platform)) +
-    geom_point()
-
+ggsave('plots/growth_comparison.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(growth.df.wide, aes(log(growth), log(growth_t), group=platform,
+                           color=platform, size=platform=='jags')) +
+    geom_point() + geom_abline(intercept=0, slope=1) + ggtitle("Time Comparison")
+ggsave('plots/growth_comparison_time.png', g, width=ggwidth, height=ggheight)
 
 ## Parameters for the short chains, long ones (to verify models are the
 ## same) are specified in each file and differ.
