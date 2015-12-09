@@ -65,18 +65,18 @@ cum.minESS <- function(df, breaks=5){
 run.chains <- function(model.name, seeds, Nout, L,
                        model.jags, data.jags, inits.jags, params.jags,
                        model.stan, data.stan, inits.stan, params.stan,
-                       n.burnin, n.thin, sink=TRUE){
+                       n.burnin, n.thin, sink.console=TRUE){
     perf.list <- list()
     adapt.list <- list()
     k <- 1
+    if(sink.console){
+        sink(file='trash.txt', append=FALSE, type='output')
+        on.exit(sink())
+    }
     for(seed in seeds){
         ## Now run single long chains without thinning and timing to get
         ## performance (minESS/time) for each of the methods
         ## Run a long one to ensure good tuning
-        if(sink){
-            sink(file='trash.txt', append=FALSE, type='output')
-            on.exit(sink())
-        }
         message(paste('==== Starting seed',seed, 'at', Sys.time()))
         set.seed(seed)
         message('Starting JAGS model')
