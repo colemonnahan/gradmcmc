@@ -26,9 +26,9 @@ model {
   N[1] <- K;
   ## Loop through and project population dynamics
   for(i in 2:num_years){
-        temp <- N[i-1]+r*N[i-1]*(1-N[i-1]/K)-catches[i];
+        temp <- N[i-1]+r*N[i-1]*(1-N[i-1]/K)-catches[i-1];
      if(temp<1){
-	// increment_log_prob(-.0001*(temp-10)^2);
+	increment_log_prob(-.0001*(temp-10)^2);
 	N[i] <- 10/(2-temp/10);
 	// if(i==20) print(temp,  N[i],  -.0001*(temp-10)^2);
 	} else {
