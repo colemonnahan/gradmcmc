@@ -1,42 +1,38 @@
-// The Hamley and Skud effective hook model.
-
 data {
   int<lower=0> N; // number of years
   real catches[N];
   real logcpue[N];
 }
 parameters {
-
-  real<lower=10, upper=1000> logK;
-  real<lower=log(.01), upper=log(1.2)> logr;
-  real<lower=.5, upper=100> iq;
-  real isigma2;
-  real itau2;
+  real<lower=2000, upper=10000> K;
+  real<lower=.01, upper=.5> r;
+  real<lower=.1, upper=10> q;
+  real<lower=0.01, upper=1> sd_obs;
+  real<lower=.01, upper=2000> sd_process;
   real u[N];
 }
 
-transformed parameters {
-
-  real<lower=0> sigma2;
-  sigma2 <- 1/isigma2;
-  real<lower=0> tau2;
-  tau2 <- 1/itau2;
-  real<lower=0> q;
-  q <- 1/iq;
-  real K;
-  real r;
-  K <- exp(logK);
-  r <- exp(logr);
-}
-
 model {
+ real ypred[N];
  real B[N];
- u[1]~dnorm(0, sqrt(sigma2));
- B[1] <- K
- for(i in 1:N){
- u[i]~dnorm(0, sqrt(sigma2));
- B[i] <- (B[i-1]+r*B[i-1]*(1-B[i-1]/K)-catches[i-1])*exp(u[i])
- ypred[i] <- log(B[i]) +log(*q);
+ real temp;
+ r~normal(.1, .25);
+ K~normal(5000, 1000);
+ q~normal(1, .25);
+ sd_process~normal(200, 10);
+ sd_obs~normal(.1, .1);
+ u~normal(0, sd_process);
+ B[1] <- K + u[1];
+ ypred[1] <- log(B[1])+log(q);
+ for(i in 2:N){
+   temp <- B[i-1]+r*B[i-1]*(1-B[i-1]/K)-catches[i-1] + u[i];
+   if(temp<1){
+  //increment_log_prob(-1*(temp-1)^2);
+   B[i] <- 1/(2-temp/1);
+   } else {
+      B[i] <- temp;
+   }
+   ypred[i] <- log(B[i]) +log(q);
  }
-  logcpue~normal(ypred, sqrt(tau2));
+ logcpue~normal(ypred, sd_obs);
 }
