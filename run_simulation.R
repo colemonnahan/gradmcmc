@@ -15,6 +15,9 @@ n.burnin <- 1000
 n.thin <- 1
 
 ## source("run_growth.R")
+Nyears.vec <- c(20, 50, 100)
+L.vec <- c(1,5)
+seeds <- c(4,6,1)
 
 
 

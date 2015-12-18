@@ -1,11 +1,9 @@
 setwd('ss_logistic')
 xx <- list()
-Nyears.vec <- 50
 for(Nyears in Nyears.vec){
     ## Reproducible data since seed set inside the function
     message(paste("======== Starting Nyears=", Nyears))
     set.seed(115)
-    source("load_models.R")
     trash <- capture.output(source("load_models.R"))
     xx[[Nyears]] <-
         run.chains(model.name='ss_logistic', model.jags=model.jags, model.stan=model.stan,

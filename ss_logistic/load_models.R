@@ -54,6 +54,7 @@ data$u <- NULL
 data.jags <- data
 params.jags <- c('r', 'K', 'sd_obs', 'q', 'sd_process', 'u')
 inits.jags <- list(init)
+model.jags <- 'ss_logistic.jags'
 ## temp <- jags(data=data.jags, inits=list(init), param=params.jags, model.file='ss_logistic.jags',
 ##             n.chains=1, n.burnin=0, n.iter=5, n.thin=1)
 ## End of JAGS
