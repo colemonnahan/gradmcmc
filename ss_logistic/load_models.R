@@ -74,8 +74,8 @@ rm(data, init,  K.true, r.true)
 ### ------------------------------------------------------------
 message("Finished loading ss_logistic models")
 
-### Some development code to test the models.
-## thin <- 500
+## ## Some development code to test the models.
+## thin <- 5000
 ## pars <- c('r', 'K', 'q', 'sd_obs', 'sd_process')
 ## temp <- jags(data=data.jags, inits=inits.jags, param=params.jags, model.file='ss_logistic.jags',
 ##      n.chains=1, n.burnin=2000, n.iter=thin*2000+2000, n.thin=thin)

@@ -13,7 +13,8 @@ for(Nyears in Nyears.vec){
                    L=L.vec)
     ## Save them as we go in case it fails
     perf <- do.call(rbind, do.call(rbind, lapply(xx, function(x) x[['perf.list']])))
-    adapt <- do.call(rbind.fill, do.call(rbind, lapply(xx, function(x) x[['adapt.list']])))
+    trash <- do.call(rbind, lapply(xx, function(x) x[['adapt.list']]))
+    adapt <- do.call(rbind.fill, trash[!sapply(trash, is.null)])
     saveRDS(perf, 'results/perf.RDS')
     saveRDS(adapt, 'results/adapt.RDS')
 }

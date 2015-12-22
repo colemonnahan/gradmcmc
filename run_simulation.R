@@ -10,15 +10,15 @@
 ## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
 ## CHANGES MAY NOT BE THERE !!@@@
 source("startup.R")
-Nout <- 1000
-n.burnin <- 1000
+Nout <- 5000
+n.burnin <- 2000
 n.thin <- 1
 
 ## source("run_growth.R")
-Nyears.vec <- c(20, 50, 100)
-L.vec <- c(1,5)
-seeds <- c(4,6,1)
-
+Nyears.vec <- c(20, 50, 100, 200, 500)
+L.vec <- c(1,5, 20)
+seeds <- c(4,6,1, 48, 10)
+source('ss_logistic/run_chains.R')
 
 
 ## Parameters for the short chains, long ones (to verify models are the
