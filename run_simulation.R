@@ -55,6 +55,40 @@ source('generate.data.R')
 
 
 ### ------------------------------------------------------------
+
+## Speed tests for Stan algorithms. HMC should scale linearly with int_time
+## and NUTS should be similar for average n_leapfrog__ for the warmup and
+## sampling period.
+seeds <- 1:20
+int_time <- seq(1,20, by=2)
+Nsim <- 5000
+schools_dat <- list(J=8, y=c(28,8,-3,7,-1,1,18,12), sigma=c(15,10,16,11,9,11,10,18))
+fit <- stan(file='schools/schools.stan', data=schools_dat, iter=10,
+                chains=1, seed=seed, algorithm='HMC', control=list(int_time=1))
+speed.hmc <-
+  ldply(seeds, function(seed){
+          fit.hmc <- ldply(int_time, function(L){
+                    fit <- stan(fit=fit, data=schools_dat, iter=Nsim,
+                                chains=1, seed=seed, algorithm='HMC', control=list(int_time=L))
+                    data.frame(L=L, seed=seed, rstan::get_elapsed_time(fit))
+                    })})
+speed.nuts <-
+  ldply(seeds, function(seed){
+          fit <- stan(fit=fit, data=schools_dat, iter=Nsim,
+                      chains=1, seed=seed, algorithm='NUTS')
+          temp <- data.frame(get_sampler_params(fit))
+          data.frame(warmup.nleap=mean(temp[(1:Nsim/2), 'n_leapfrog__']),
+                          sample.nleap=mean(temp[-(1:Nsim/2),'n_leapfrog__']),
+                          get_elapsed_time(fit), seed=seed)})
+par(mfrow=c(1,2))
+plot(warmup~L, data=speed.hmc, ylab="Time", xlab="Steps", main='Warmup',
+     ylim=c(0, max(speed.hmc$sample)))
+points(warmup~warmup.nleap, data=speed.nuts, col='red', pch=2)
+plot(sample~L, data=speed.hmc, ylab="Time", xlab="Steps", main='Sample',
+     ylim=c(0, max(speed.hmc$sample)))
+points(sample~sample.nleap, data=speed.nuts, col='red', pch=2)
+legend('topleft', legend=c("HMC", "NUTS"), col=c('black', 'red'), pch=c(1,2))
+
 ## ## Development code
 ## nsim.seq <- 2^(4:18)
 ## speed.tests <-
