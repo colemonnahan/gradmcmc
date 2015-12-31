@@ -12,7 +12,7 @@ ss_logistic.traj <- function(r, K, num.years, sd.catch, prop.caught,
     for( yr in 2: num.years){
         Nt <- trajectory[yr-1]
         Ct <- catches[yr-1] <- Nt*(1-exp(-ifelse(Nt<K/10, 0, F)))
-        trajectory[yr] <- Nt+r*Nt*(1- (Nt/K))-Ct + u[yr]
+        trajectory[yr] <- (Nt+r*Nt*(1- (Nt/K))-Ct) * exp(u[yr]-sd.process^2/2)
         if( trajectory[yr]<=0 ) { trajectory[yr] <- NA; break}
     }
     ## generate lognormal samples
@@ -29,25 +29,28 @@ ss_logistic.traj <- function(r, K, num.years, sd.catch, prop.caught,
 }
 r.true <- .1
 K.true <- 5000
+sd.process <- .02
+sd.obs <- .02
 data <- ss_logistic.traj(r=r.true, K=K.true, num.years=Nyears,
-                         years.obs=1:Nyears, sd.obs=.1, sd.process=200, F=.07,
+                         years.obs=1:Nyears, sd.obs=sd.obs,
+                         sd.process=sd.process, F=.05,
                          plot=FALSE)
-init <- list(r=r.true, K=K.true, q=1, sd_obs=.1, sd_process=200,
+init <- list(r=r.true, K=K.true, q=1, sd_obs=.1, sd_process=sd.process,
              u=data$u)
+u <- data$u
 data$u <- NULL
-
-## ## check initial values
-## r <- (init$r)
-## K <- (init$K)
-## trajectory <- rep(NA, data$N)
-## trajectory[1] <- K + init$u[1]
-## for( yr in 2: data$N){
-##     Nt <- trajectory[yr-1]
-##     Ct <- data$catches[yr-1]
-##     trajectory[yr] <- Nt+r*Nt*(1- (Nt/K))-Ct + init$u[yr]
-## }
-## plot(trajectory, ylim=c(0,K*1.1), type='l')
-##        with(data, points(exp(logcpue), col='red'))
+## check initial values
+r <- (init$r)
+K <- (init$K)
+trajectory <- rep(NA, data$N)
+trajectory[1] <- K*exp(init$u[1]-sd.process^2/2)
+for( yr in 2: data$N){
+    Nt <- trajectory[yr-1]
+    Ct <- data$catches[yr-1]
+    trajectory[yr] <- (Nt+r*Nt*(1- (Nt/K))-Ct)*exp(init$u[yr]-sd.process^2/2)
+}
+plot(trajectory, ylim=c(0,max(exp(data$logcpue))), type='l')
+with(data, points(exp(logcpue), col='red'))
 
 ### ------------------------------------------------------------
 ## JAGS models
@@ -69,89 +72,105 @@ inits.stan <- list(init)
 model.stan <- stan(file='ss_logistic.stan', data=data.stan, iter=50, chains=1,
                    warmup=10, thin=1, init=inits.stan)
 
-rm(data, init,  K.true, r.true)
+## rm(data, init,  K.true, r.true, sd.process)
 ## End of Stan
 ### ------------------------------------------------------------
 message("Finished loading ss_logistic models")
 
-## ## Some development code to test the models.
-## thin <- 5000
-## pars <- c('r', 'K', 'q', 'sd_obs', 'sd_process')
-## temp <- jags(data=data.jags, inits=inits.jags, param=params.jags, model.file='ss_logistic.jags',
-##      n.chains=1, n.burnin=2000, n.iter=thin*2000+2000, n.thin=thin)
-## .jags <- data.frame(temp$BUGSoutput$sims.list)
-## par(mfrow=c(3,5), mar=c(2,2,2,0))
-## trash <- lapply(pars, function(x)
-##     hist(.jags[,x], breaks=30, main=x))
-## trash <- lapply(pars, function(x)
-##     acf(.jags[,x], main=x))
-## trash <- lapply(pars, function(x)
-##     plot(.jags[,x], type='l',main=x))
-## temp2 <- stan(fit=model.stan, data=data.stan, iter=2000*thin+2000, chains=1,
-##              warmup=2000, thin=thin, init=inits.stan,
-##              control=list(adapt_engaged=TRUE, max_treedepth=7))
-## .stan <- data.frame(extract(temp2, permuted=FALSE)[,1,])
-## tune.pars <- data.frame(get_sampler_params(temp2))
-## tune.pars$iteration <- 1:nrow(tune.pars)
-## tune.pars$stepsize__ <- log(tune.pars$stepsize__)
-## ggplot(melt(tune.pars, 'iteration'), aes(iteration, value))+
-##     facet_wrap('variable', scales='free') + geom_point()
+## Some development code to test the models.
+thin <- 1
+warmup <- 2000
+Niter <- 1000
+pars <- c('r', 'K', 'q', 'sd_obs', 'sd_process')
+temp <- jags(data=data.jags, inits=inits.jags, param=params.jags, model.file='ss_logistic.jags',
+     n.chains=1, n.burnin=warmup, n.iter=thin*Niter+warmup, n.thin=thin)
+.jags <- data.frame(temp$BUGSoutput$sims.list)
+par(mfrow=c(3,5), mar=c(2,2,2,0))
+trash <- lapply(pars, function(x)
+    hist(.jags[,x], breaks=30, main=x))
+trash <- lapply(pars, function(x)
+    acf(.jags[,x], main=x))
+trash <- lapply(pars, function(x)
+    plot(.jags[,x], type='l',main=x))
+temp2 <- stan(fit=model.stan, data=data.stan, iter=Niter*thin+warmup, chains=1,
+             warmup=warmup, thin=thin, init=inits.stan,
+             control=list(adapt_engaged=TRUE, max_treedepth=7))
 
-## par(mfrow=c(3,5), mar=c(2,2,2,0))
-## trash <- lapply(pars, function(x)
-##     hist(.stan[,x], breaks=30, main=x))
-## trash <- lapply(pars, function(x)
-##     acf(.stan[,x], main=x))
-## trash <- lapply(pars, function(x)
-##     plot(.stan[,x], type='l',main=x))
+x.stan <- data.frame(extract(temp2, permuted=FALSE)[,1,])
+tune.pars <- data.frame(get_sampler_params(temp2))
+tune.pars$iteration <- 1:nrow(tune.pars)
+tune.pars$stepsize__ <- log(tune.pars$stepsize__)
+ggplot(melt(tune.pars, 'iteration'), aes(iteration, value))+
+    facet_wrap('variable', scales='free') + geom_point()
 
-## pairs(.stan[,pars])
-## pairs(.jags[,pars])
+par(mfrow=c(3,5), mar=c(2,2,2,0))
+trash <- lapply(pars, function(x)
+    hist(.stan[,x], breaks=30, main=x))
+trash <- lapply(pars, function(x)
+    acf(.stan[,x], main=x))
+trash <- lapply(pars, function(x)
+    plot(.stan[,x], type='l',main=x))
 
-## par(mfrow=c(3,6))
-## acf(.stan$r)
-## acf(.stan$K)
-## acf(.stan$q)
-## acf(.stan$sd_process)
-## acf(.stan$sd_obs)
-## plot(.stan$r, .stan$K, xlim=c(0,.2), ylim=c(2000, 10000))
-## acf(.jags$r)
-## acf(.jags$K)
-## acf(.jags$q)
-## acf(.jags$sd_process)
-## acf(.jags$sd_obs)
-## plot(.jags$r, .jags$K, xlim=c(0,.2), ylim=c(2000, 10000))
-## qqplot(.stan$r, .jags$r); abline(0,1)
-## qqplot(.stan$K, .jags$K); abline(0,1)
-## qqplot(.stan$q, .jags$q); abline(0,1)
-## qqplot(.stan$sd_process, .jags$sd_process); abline(0,1)
-## qqplot(.stan$sd_obs, .jags$sd_obs); abline(0,1)
-## qqplot(-.stan$lp__, .jags$deviance); abline(0,1)
+pairs(.stan[,pars])
+pairs(.jags[,pars])
 
-## jags.ess <- effectiveSize(.jags)
-## stan.ess <- effectiveSize(.stan)
-## plot(jags.ess, stan.ess)
+par(mfrow=c(3,6))
+acf(.stan$r)
+acf(.stan$K)
+acf(.stan$q)
+acf(.stan$sd_process)
+acf(.stan$sd_obs)
+plot(.stan$r, .stan$K, xlim=c(0,.2), ylim=c(2000, 10000))
+acf(.jags$r)
+acf(.jags$K)
+acf(.jags$q)
+acf(.jags$sd_process)
+acf(.jags$sd_obs)
+plot(.jags$r, .jags$K, xlim=c(0,.2), ylim=c(2000, 10000))
+qqplot(.stan$r, .jags$r); abline(0,1)
+qqplot(.stan$K, .jags$K); abline(0,1)
+qqplot(.stan$q, .jags$q); abline(0,1)
+qqplot(.stan$sd_process, .jags$sd_process); abline(0,1)
+qqplot(.stan$sd_obs, .jags$sd_obs); abline(0,1)
+qqplot(-.stan$lp__, .jags$deviance); abline(0,1)
 
-## par(mfcol=c(3,2))
-## plot(.stan$r, .stan$K, xlim=c(0,.2), ylim=c(2000, 10000))
-## mtext('Stan')
-## acf(.stan$r)
-## acf(.stan$K)
-## plot(.jags$r, .jags$K, xlim=c(0,.2), ylim=c(2000, 10000))
-## mtext('JAGS')
-## acf(.jags$r)
-## acf(.jags$K)
+jags.ess <- effectiveSize(.jags)
+stan.ess <- effectiveSize(.stan)
+plot(jags.ess, stan.ess)
 
-## par(mfcol=c(2,2))
-## plot(.stan$r,  ylim=c(0,.2))
-## mtext('Stan')
-## plot(.stan$K,  ylim=c(2000,10000))
-## plot(.jags$r,  ylim=c(0,.2))
-## mtext('JAGS')
-## plot(.jags$K,  ylim=c(2000,10000))
+par(mfcol=c(3,2))
+plot(.stan$r, .stan$K, xlim=c(0,.2), ylim=c(2000, 10000))
+mtext('Stan')
+acf(.stan$r)
+acf(.stan$K)
+plot(.jags$r, .jags$K, xlim=c(0,.2), ylim=c(2000, 10000))
+mtext('JAGS')
+acf(.jags$r)
+acf(.jags$K)
 
-## par(mfrow=c(5,10), mar=c(0,0,0,0))
-## for(i in 1:50) plot(.stan[1000:2000, paste0('u.',i,'.')], type='l')
+par(mfcol=c(2,2))
+plot(.stan$r,  ylim=c(0,.2))
+mtext('Stan')
+plot(.stan$K,  ylim=c(2000,10000))
+plot(.jags$r,  ylim=c(0,.2))
+mtext('JAGS')
+plot(.jags$K,  ylim=c(2000,10000))
 
-## par(mfrow=c(2,3), mar=c(0,0,0,0))
-## for(i in pars) plot(.stan[, i], type='l')
+par(mfrow=c(5,10), mar=c(0,0,0,0))
+for(i in 1:Nyears){
+    plot(.stan[, paste0('u.',i,'.')], type='l')
+    abline(h=u[i], col='red')
+}
+par(mfrow=c(5,10), mar=c(0,0,0,0))
+for(i in 1:Nyears){
+    plot(.jags[, paste0('u.',i)], type='l')
+    abline(h=u[i], col='red')
+}
+par(mfrow=c(5,10), mar=c(0,0,0,0))
+for(i in 1:Nyears){
+    qqplot(.jags[, paste0('u.',i)], type='l', .stan[, paste0('u.',i,'.')],
+           axes=FALSE)
+    box()
+    abline(0,1, col='red')
+}
+
