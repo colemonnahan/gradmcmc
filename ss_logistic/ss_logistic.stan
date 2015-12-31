@@ -7,8 +7,8 @@ parameters {
   real<lower=2000, upper=10000> K;
   real<lower=.01, upper=.5> r;
   real<lower=.1, upper=10> q;
-  real<lower=0.01, upper=1> sd_obs;
-  real<lower=.01, upper=2> sd_process;
+  real<lower=0, upper=1> sd_obs;
+  real<lower=0, upper=1> sd_process;
   real u[N];
 }
 
@@ -16,11 +16,11 @@ model {
  real ypred[N];
  real B[N];
  real temp;
- r~normal(.1, .025);
+ r~normal(.1, .0025);
  K~normal(5000, 10);
  q~normal(1, .025);
- sd_process~normal(.2, 1);
- sd_obs~normal(.1, .1);
+ sd_process~normal(.02, .01);
+ sd_obs~normal(.02, .01);
  u~normal(0, sd_process);
  B[1] <- K*exp(u[1]);
  ypred[1] <- log(B[1])+log(q);

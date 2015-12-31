@@ -1,17 +1,18 @@
 model{
-r~dnorm(.1, 1/.025^2)I(0.01,.5)
+r~dnorm(.1, 1/.0025^2)I(0.01,.5)
 K~dnorm(5000, 1/10^2)I(2000,10000)
 q~dnorm(1, 1/.025^2)I(.1,10)
-sd_process~dnorm(.2,1/1^2)I(.01, 2)
-sd_obs~dnorm(.1, 1/.1^2)I(0.01,1)
+sd_process~dnorm(.02,1/.01^2)I(.01, 2)
+sd_obs~dnorm(.02, 1/.01^2)I(0.01,1)
 isd_obs2 <- pow(sd_obs,-2)
 isd_process2 <- pow(sd_process,-2)
 u[1]~dnorm(0, isd_process2)
 B[1] <- K*exp(u[1]);
+logcpue[1]~dnorm(log(B[1])+log(q), isd_obs2)
 for(i in 2:N){
     u[i]~dnorm(0, isd_process2)
-    temp[i] <- (B[i-1]+r*B[i-1]*(1-B[i-1]/K) - catches[i-1])*exp(u[i])
+    temp[i] <- (B[i-1]+r*B[i-1]*(1-B[i-1]/K)-catches[i-1])*exp(u[i])
     B[i] <- ifelse(temp[i]<.001, 1/(2-temp[i]/.001), temp[i])
-    logcpue[i]~dnorm(log(B[i]*q), isd_obs2)
+    logcpue[i]~dnorm(log(B[i])+log(q), isd_obs2)
 }
 }

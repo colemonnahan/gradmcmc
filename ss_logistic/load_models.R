@@ -78,8 +78,8 @@ model.stan <- stan(file='ss_logistic.stan', data=data.stan, iter=50, chains=1,
 message("Finished loading ss_logistic models")
 
 ## Some development code to test the models.
-thin <- 1
-warmup <- 2000
+thin <- 1000
+warmup <- 5000
 Niter <- 1000
 pars <- c('r', 'K', 'q', 'sd_obs', 'sd_process')
 temp <- jags(data=data.jags, inits=inits.jags, param=params.jags, model.file='ss_logistic.jags',
@@ -96,7 +96,7 @@ temp2 <- stan(fit=model.stan, data=data.stan, iter=Niter*thin+warmup, chains=1,
              warmup=warmup, thin=thin, init=inits.stan,
              control=list(adapt_engaged=TRUE, max_treedepth=7))
 
-x.stan <- data.frame(extract(temp2, permuted=FALSE)[,1,])
+.stan <- data.frame(extract(temp2, permuted=FALSE)[,1,])
 tune.pars <- data.frame(get_sampler_params(temp2))
 tune.pars$iteration <- 1:nrow(tune.pars)
 tune.pars$stepsize__ <- log(tune.pars$stepsize__)
@@ -138,24 +138,6 @@ jags.ess <- effectiveSize(.jags)
 stan.ess <- effectiveSize(.stan)
 plot(jags.ess, stan.ess)
 
-par(mfcol=c(3,2))
-plot(.stan$r, .stan$K, xlim=c(0,.2), ylim=c(2000, 10000))
-mtext('Stan')
-acf(.stan$r)
-acf(.stan$K)
-plot(.jags$r, .jags$K, xlim=c(0,.2), ylim=c(2000, 10000))
-mtext('JAGS')
-acf(.jags$r)
-acf(.jags$K)
-
-par(mfcol=c(2,2))
-plot(.stan$r,  ylim=c(0,.2))
-mtext('Stan')
-plot(.stan$K,  ylim=c(2000,10000))
-plot(.jags$r,  ylim=c(0,.2))
-mtext('JAGS')
-plot(.jags$K,  ylim=c(2000,10000))
-
 par(mfrow=c(5,10), mar=c(0,0,0,0))
 for(i in 1:Nyears){
     plot(.stan[, paste0('u.',i,'.')], type='l')
@@ -168,9 +150,50 @@ for(i in 1:Nyears){
 }
 par(mfrow=c(5,10), mar=c(0,0,0,0))
 for(i in 1:Nyears){
-    qqplot(.jags[, paste0('u.',i)], type='l', .stan[, paste0('u.',i,'.')],
+    qqplot(.jags[, paste0('u.',i)], .stan[, paste0('u.',i,'.')],
            axes=FALSE)
     box()
     abline(0,1, col='red')
 }
 
+## Plot model fits for both softwares
+get.trajectory <- function(data, par){
+    u <- as.numeric(par[,grep('u.', x=names(par))])
+    trajectory <- rep(NA, data$N)
+    trajectory[1] <- par$K*exp(u[1])
+    for(yr in 2:data$N){
+        Nt <- trajectory[yr-1]
+        Ct <- data$catches[yr-1]
+        trajectory[yr] <- (Nt+par$r*Nt*(1- (Nt/par$K))-Ct)*exp(u[yr])
+    }
+    return(trajectory)
+}
+
+## check model fits
+r <- (init$r)
+K <- (init$K)
+trajectory <- rep(NA, data$N)
+trajectory[1] <- K*exp(init$u[1]-sd.process^2/2)
+for( yr in 2: data$N){
+    Nt <- trajectory[yr-1]
+    Ct <- data$catches[yr-1]
+    trajectory[yr] <- (Nt+r*Nt*(1- (Nt/K))-Ct)*exp(init$u[yr]-sd.process^2/2)
+}
+plot(trajectory, ylim=c(0,max(exp(data$logcpue))), type='l', lwd=2)
+for(i in 1:100){
+    lines(1:data$N, get.trajectory(data=data, par=.jags[i,]), col=gray(.4))
+}
+lines(trajectory, lwd=2)
+with(data, points(exp(logcpue), col='red'))
+
+## Check distribution of biomass in each year
+.jags.temp <- ldply(1:nrow(.jags), function(i)
+    get.trajectory(data=data, par=.jags[i,]))
+.stan.temp <- ldply(1:nrow(.stan), function(i)
+    get.trajectory(data=data, par=.stan[i,]))
+par(mfrow=c(5,10), mar=c(0,0,0,0))
+for(i in 1:data$N){
+    qqplot(.jags.temp[,i], .stan.temp[,i], axes=FALSE)
+    box()
+    abline(0,1, col='red')
+}
