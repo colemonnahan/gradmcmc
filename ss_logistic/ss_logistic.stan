@@ -7,8 +7,8 @@ parameters {
   real<lower=2000, upper=10000> K;
   real<lower=.01, upper=.5> r;
   real<lower=.1, upper=10> q;
-  real<lower=0, upper=1> sd_obs;
-  real<lower=0, upper=1> sd_process;
+  real<lower=0.001, upper=1> sd_obs;
+  real<lower=0.001, upper=1> sd_process;
   real u[N];
 }
 
