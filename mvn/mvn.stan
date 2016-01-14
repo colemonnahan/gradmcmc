@@ -1,5 +1,3 @@
-// The Hamley and Skud effective hook model.
-
 data {
   int<lower=0> Npar;
   matrix[Npar,Npar] covar;
