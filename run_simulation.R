@@ -34,7 +34,9 @@ models <- 'mvn'
 for(m in models){
 setwd(m)
 source('fit_empirical.R')
-
+source('fit_simulated.R')
+setwd('..')
+}
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
