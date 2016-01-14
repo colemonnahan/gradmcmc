@@ -147,6 +147,7 @@ run.chains <- function(model.name, seeds, Nout, L,
     return(invisible(list(adapt.list=adapt.list, perf.list=perf.list)))
 }
 
+
 plot.model.results <- function(perf, adapt){
     model.name <- as.character(perf$model[1])
     perf$samples.per.time <- perf$minESS/perf$time
@@ -172,66 +173,74 @@ plot.model.results <- function(perf, adapt){
     ggsave(paste0('plots/',model.name, '_adapt_NUTS.png'), g, width=ggwidth, height=ggheight)
 }
 
-
-
-### ------------------------------------------------------------
-### OLD FUNCTIONS
-## ## wrappers to run chains and return ESS and other metrics
-## run_hmc <- function(obj, nsim, eps, L, covar=NULL, seed=NULL, diag=FALSE){
-##     if(!is.null(seed)) set.seed(seed)
-##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="HMC", L=L,
-##                     eps=eps, diagnostic=TRUE, covar=covar, Madapt=Madapt)
-##     ## discard the warmup
-##     par <- x1$par[-(1:Madapt),]
-##     minESS <- min(as.vector(coda::effectiveSize(par)))
-##     x2 <- data.frame(covar=!is.null(covar), tuning=eps, algorithm='hmc', L=L, seed=seed,
-##                      time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
-##                      perf=log10(x1$time/minESS))
-##     if(diag) return(x1) else return(x2)
-## }
-## run_nuts <- function(obj, nsim, inits=NULL, covar=NULL, delta, seed=NULL,
-##                      Madapt, diag=FALSE, max_doubling=4){
-##     if(!is.null(seed)) set.seed(seed)
-##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="NUTS", diagnostic=TRUE, max_doubling=max_doubling,
-##                    covar=covar, delta=delta, Madapt=Madapt, params.init=inits)
-##     ## discard the warmup
-##     par <- x1$par[-(1:Madapt),]
-##     minESS <- min(as.vector(coda::effectiveSize(par)))
-##     x2 <- data.frame(covar=!is.null(covar), tuning=delta, algorithm='nuts',
-##                      seed=seed, time=x1$time, minESS=minESS, acceptance=NA,
-##                      perf=log10(x1$time/minESS))
-##     if(diag) return(x1) else return(x2)
-## }
-## run_rwm <- function(obj, nsim, alpha, covar, seed=NULL, ...){
-##     if(!is.null(seed)) set.seed(seed)
-##     x1 <- TMB::mcmc(obj, nsim=nsim, algorithm="RWM", diagnostic=TRUE,
-##                    covar=covar, alpha=alpha, ...)
-##     minESS <- min(as.vector(coda::effectiveSize(x1$par)))
-##     x2 <- data.frame(covar=!is.null(covar), tuning=alpha, algorithm='rwm', seed=seed,
-##                      time=x1$time, minESS=minESS, acceptance=mean(x1$accepted),
-##                      perf=log10(x1$time/minESS))
-##     return(x2)
-## }
-## make.trace <- function(df.thinned, model, string){
-##     nrows <- ceiling(sqrt(ncol(df.thinned)))
-##     png(paste0('plots/', model, '.trace.', string,'.png'), width=9, height=6,
-##         units='in', res=500)
-##     par(mfrow=c(nrows,nrows), mar=.1*c(1,1,1,1))
-##     for(i in 1:ncol(df.thinned)){
-##         plot(df.thinned[,i], type='l', axes=FALSE,
-##              ylim=range(df.thinned[,i]), col=rgb(0,0,0,.5)); box()
-##         title(names(df.thinned)[i], line=-1)
-##     }
-##     dev.off()
-## }
-## make.acf <- function(df, model, string){
-##     nrows <- ceiling(sqrt(ncol(df)))
-##     png(paste0('plots/', model, '.acf.', string,'.png'), width=9, height=6,
-##         units='in', res=500)
-##     par(mfrow=c(nrows,nrows), mar=.1*c(1,1,1,1))
-##     for(i in 1:ncol(df)) {
-##         acf(df[,i], axes=FALSE);box()
-##         title(names(df)[i], line=-1)
-##     }
-##     dev.off()
-## }
+#' Verify the models are the same (coding errors) by plotting QQ plots of
+#' each parameter between Stan and JAGS.
+#'
+#' @param sims.stan A data frame of MCMC samples from a single chain of
+#' a Stan run, using extract(fit.stan).
+#' @param sims.jags A data frame of MCMC samples from a single chain of a
+#' JAGS run.
+#' @return ggplot object invisibly. Also makes plot in folder 'plots' in
+#' current working directory.
+plot.model.comparisons <- function(sims.stan, sims.jags){
+    ## Clean up names so they match exactly
+    names(sims.stan) <- gsub('\\.', '', x=names(sims.stan))
+    names(sims.jags) <- gsub('\\.', '', x=names(sims.jags))
+    sims.stan$lp__ <- sims.jags$deviance <- NULL
+    par.names <- names(sims.stan)
+    sims.jags <- sims.jags[,par.names]
+    ## Massage qqplot results into long format for ggplot
+    qq <- ldply(par.names, function(i){
+                    temp <- as.data.frame(qqplot(sims.jags[,i], sims.stan[,i], plot.it=FALSE))
+                    return(cbind(i,temp))
+                })
+    g <- ggplot(qq, aes(x,y))+ geom_point(alpha=.5) +
+        geom_abline(slope=1, col='red') + facet_wrap('i', scales='free') +
+            xlab('jags')+ ylab('stan')
+    ggsave('plots/model_comparison.png', width=9, height=5)
+    return(invisible(g))
+}
+#' Run models with thinning to get independent samples which are then used
+#' to verify the posteriors are the same, effectively checking for bugs
+#' between models before doing performance comparisons
+#'
+verify.models <- function(params.jags, model.jags, inits.jags, data.jags,
+                          params.stan, model.stan, inits.stan, data.stan,
+                          Niter, Nthin){
+    Nwarmup <- Niter/2
+    fit.jags <- jags(data=data.jags, inits=inits.jags, param=params.jags,
+                     model.file=model.jags, n.chains=1, n.burnin=Nwarmup, n.iter=Niter,
+                     n.thin=Nthin)
+    sims.jags <- data.frame(fit.jags$BUGSoutput$sims.matrix)
+    array.jags <- fit.jags$BUGSoutput$sims.array
+    fit.stan <- stan(file=model.stan, data=data.stan, iter=Niter, chains=1,
+                     warmup=Nwarmup, thin=Nthin, init=inits.stan)
+    sims.stan <- data.frame(extract(fit.stan, permuted=FALSE)[,1,])
+    jags.ess <- data.frame(monitor(sims=fit.jags$BUGSoutput$sims.array, warmup=0, print=FALSE, probs=.5))$n_eff
+    stan.ess <- data.frame(monitor(sims=extract(fit.stan, permuted=FALSE), warmup=0, print=FALSE, probs=.5))$n_eff
+    plot.model.comparisons(sims.stan, sims.jags)
+    print(rbind(jags.ess, stan.ess))
+}
+make.trace <- function(df.thinned, model, string){
+    nrows <- ceiling(sqrt(ncol(df.thinned)))
+    png(paste0('plots/', model, '.trace.', string,'.png'), width=9, height=6,
+        units='in', res=500)
+    par(mfrow=c(nrows,nrows), mar=.1*c(1,1,1,1))
+    for(i in 1:ncol(df.thinned)){
+        plot(df.thinned[,i], type='l', axes=FALSE,
+             ylim=range(df.thinned[,i]), col=rgb(0,0,0,.5)); box()
+        title(names(df.thinned)[i], line=-1)
+    }
+    dev.off()
+}
+make.acf <- function(df, model, string){
+    nrows <- ceiling(sqrt(ncol(df)))
+    png(paste0('plots/', model, '.acf.', string,'.png'), width=9, height=6,
+        units='in', res=500)
+    par(mfrow=c(nrows,nrows), mar=.1*c(1,1,1,1))
+    for(i in 1:ncol(df)) {
+        acf(df[,i], axes=FALSE);box()
+        title(names(df)[i], line=-1)
+    }
+    dev.off()
+}

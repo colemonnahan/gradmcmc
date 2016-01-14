@@ -5,10 +5,8 @@
 ## Started 8/2015
 
 ### ------------------------------------------------------------
-### Step 0: prepare working space
-## To reinstall TMB locally, go to that folder and run 'make install' from
-## the shell. This is preferred to devtools::install. @@@!! ALSO RESTART R OR
-## CHANGES MAY NOT BE THERE !!@@@
+### Step 0: prepare working space; load libraries, functions, and global
+### variables
 source("startup.R")
 Nout <- 5000
 n.burnin <- 2000
@@ -31,11 +29,12 @@ source("ehook/ehook_run.R")
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
-### Step 1: Run examples to generate data. These are dropped in the results
-### folder and read in during the simulations.
-seeds.list <- list("logistic"=352)
-setwd(main.dir)
-source('generate.data.R')
+### Step 1: Loop through each model and fit empirical and simulated data
+models <- 'mvn'
+for(m in models){
+setwd(m)
+source('fit_empirical.R')
+
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
@@ -43,6 +42,9 @@ source('generate.data.R')
 ### algorithms.
 ### End of Step 2.
 ### ------------------------------------------------------------
+
+
+
 ### ------------------------------------------------------------
 ### Step 3: Load and prepare data
 ### End of Step 3.
