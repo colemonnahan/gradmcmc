@@ -64,6 +64,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, L, delta=.8, data.jags, init
                        params.jags, data.stan, inits.stan, sink.console=TRUE){
     model.jags <- paste0(model, '.jags')
     model.stan <- paste0(model, '.stan')
+    if(Nthin != 1) stop("Nthin must be one, delta.final calculation breaks otherwise")
     Niter <- Nout*Nthin
     Nwarmup <- Niter/2
     perf.list <- list()
@@ -93,7 +94,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, L, delta=.8, data.jags, init
         sims.jags <- fit.jags$BUGSoutput$sims.array
         perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
         perf.list[[k]] <-
-            data.frame(model=model, platform='jags', seed=seed, delta=NA,
+            data.frame(model=model, platform='jags', seed=seed,
                        Npar=dim(sims.jags)[3],
                        time.warmup=time.jags.warmup,
                        time.sampling=time.jags.sampling,
@@ -113,15 +114,17 @@ run.chains <- function(model, seeds, Nout, Nthin=1, L, delta=.8, data.jags, init
                      control=list(adapt_engaged=TRUE, adapt_delta=idelta))
             sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
             perf.stan.nuts <- data.frame(rstan::monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
-
+            adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts))
             adapt.list[[k]] <- data.frame(model=model, alg='NUTS', seed=seed,
                                           Npar=dim(sims.stan.nuts)[3]-1,
                                           Nsims=dim(sims.stan.nuts)[1],
-                                          get_sampler_params(fit.stan.nuts))
+                                          adapt.nuts)
             adapt.list[[k]]$iteration <- 1:nrow(adapt.list[[k]])
             perf.list[[k]] <-
                 data.frame(model=model, platform='stan.nuts',
-                           seed=seed, delta=idelta,
+                           seed=seed, delta.target=idelta,
+                           delta.final=length(adapt.nuts$accept_stat__[-(1:Nwarmup)]),
+                           eps.final=tail(adapt.nuts$stepsize__,1),
                            Npar=dim(sims.stan.nuts)[3]-1,
                            time.sampling=get_elapsed_time(fit.stan.nuts)[2],
                            time.warmup=get_elapsed_time(fit.stan.nuts)[1],
@@ -140,17 +143,19 @@ run.chains <- function(model, seeds, Nout, Nthin=1, L, delta=.8, data.jags, init
                              warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.stan,
                              control=list(adapt_engaged=TRUE, adapt_delta=idelta, int_time=LL))
                     sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
+                    adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
                     adapt.list[[k]] <-
                         data.frame(model=model, alg=paste0('HMC',LL), seed=seed,
                                    Npar=dim(sims.stan.hmc)[3]-1,
                                    Nsims=dim(sims.stan.hmc)[1],
-                                   get_sampler_params(fit.stan.hmc))
+                                   adapt.hmc)
                     adapt.list[[k]]$iteration <- 1:nrow(adapt.list[[k]])
                     perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
                     perf.list[[k]] <-
                         data.frame(model=model, platform=paste0('stan.hmc',LL),
-                                   seed=seed,
-                                   delta=idelta,
+                                   seed=seed, delta.target=idelta,
+                                   eps.final=tail(adapt.hmc$stepsize__,1),
+                                   delta.final=length(adapt.hmc$accept_stat__[-(1:Nwarmup)]),
                                    Npar=dim(sims.stan.hmc)[3]-1,
                                    time.sampling=get_elapsed_time(fit.stan.hmc)[2],
                                    time.warmup=get_elapsed_time(fit.stan.hmc)[1],
@@ -163,7 +168,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, L, delta=.8, data.jags, init
             }
         }
     }
-    perf <- do.call(rbind, perf.list)
+    perf <- do.call(rbind.fill, perf.list)
     perf <- within(perf, {
                        time.total <- time.warmup+time.sampling
                        perf <- minESS/time.total
