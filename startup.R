@@ -52,161 +52,220 @@ cum.minESS <- function(df, breaks=5){
 #' algorithm.
 #' @param Nout The number of resulting iterations after thinning and warmup
 #' @param Nthin The number to thin, defaults to 1.
-#' @param L A vector of integrated time for HMC.
+#' @param lambda A vector of integrated time for HMC (eps times L)
 #' @param delta A vector of target acceptance rates. Defaults to 0.8.
 #' @param n.thin The thinning rate.
 #' @param sink Whether to sink console output to trash file to cleanup
 #' console output. Defaults to TRUE. Makes it easier to see the progress on
 #' the console.
+#' @param metric A vector of metrics to run across for HMC and NUTS. Must
+#' be one of c("unit_e", "diag_e", "dense_e").
 #' @return A list of two data frames. adapt is the adaptive results from
 #' Stan, and perf is the performance metrics for each run.
-run.chains <- function(model, seeds, Nout, Nthin=1, L, delta=.8, data.jags, inits.jags,
+run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
+                       metric='diag_e', data.jags, inits.jags,
                        params.jags, data.stan, inits.stan, sink.console=TRUE){
-    model.jags <- paste0(model, '.jags')
-    model.stan <- paste0(model, '.stan')
-    if(Nthin != 1) stop("Nthin must be one, delta.final calculation breaks otherwise")
-    Niter <- Nout*Nthin
-    Nwarmup <- Niter/2
-    perf.list <- list()
-    adapt.list <- list()
-    ## Precompile Stan model so it isn't done repeatedly
-    model.stan <-
-        stan(file=model.stan, data=data.stan, iter=100,
-             warmup=50, chains=1, thin=1, algorithm='NUTS',
-             init=inits.stan, seed=1, verbose=FALSE,
-             control=list(adapt_engaged=FALSE))
-    k <- 1
-    if(sink.console){
-        sink(file='trash.txt', append=FALSE, type='output')
-        on.exit(sink())
-    }
-    for(seed in seeds){
-        message(paste('==== Starting seed',seed, 'at', Sys.time()))
-        set.seed(seed)
-        message('Starting JAGS model')
-        time.jags.warmup <- as.vector(system.time(temp <-
-            jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
-                 model.file=model.jags, n.chains=1, DIC=FALSE,
-                 n.iter=Nwarmup+10, n.burnin=Nwarmup, n.thin=1)))[3]
-        ## Rerun with those tunings to get efficiency
-        time.jags.sampling <-
-            as.vector(system.time(fit.jags <- update(temp, n.iter=Niter, n.thin=Nthin))[3])
-        sims.jags <- fit.jags$BUGSoutput$sims.array
-        perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
+  model.jags <- paste0(model, '.jags')
+  model.stan <- paste0(model, '.stan')
+  if(Nthin != 1) stop("Nthin must be one, delta.final calculation breaks otherwise")
+  Niter <- Nout*Nthin
+  Nwarmup <- Niter/2
+  ind.samples <- (Nwarmup/Nthin+1):Nout    # index of samples, excluding warmup
+  ind.warmup <- 1:(Nwarmup/Nthin)             # index of warmup samples
+  perf.list <- list()
+  adapt.list <- list()
+
+  ## Precompile Stan model so it isn't done repeatedly
+  model.stan <-
+    stan(file=model.stan, data=data.stan, iter=100,
+         warmup=50, chains=1, thin=1, algorithm='NUTS',
+         init=inits.stan, seed=1, verbose=FALSE,
+         control=list(adapt_engaged=FALSE))
+  k <- 1
+  if(sink.console){
+    sink(file='trash.txt', append=FALSE, type='output')
+    on.exit(sink())
+  }
+  for(seed in seeds){
+    message(paste('==== Starting seed',seed, 'at', Sys.time()))
+    set.seed(seed)
+    message('Starting JAGS model')
+    time.jags.warmup <- as.vector(system.time(temp <-
+      jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
+           model.file=model.jags, n.chains=1, DIC=FALSE,
+           n.iter=Nwarmup+10, n.burnin=Nwarmup, n.thin=1)))[3]
+    ## Rerun with those tunings to get efficiency
+    time.jags.sampling <-
+      as.vector(system.time(fit.jags <- update(temp, n.iter=Niter, n.thin=Nthin))[3])
+    sims.jags <- fit.jags$BUGSoutput$sims.array
+    perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
+    perf.list[[k]] <-
+      data.frame(platform='jags', seed=seed, Npar=dim(sims.jags)[3], delta.target=.5,
+                 time.warmup=time.jags.warmup, time.sampling=time.jags.sampling,
+                 minESS=min(perf.jags$n_eff), medianESS=median(perf.jags$n_eff),
+                 Nsims=dim(sims.jags)[1])
+    k <- k+1
+    rm(sims.jags, perf.jags)
+    ## Use adaptation for eps and diagonal covariances, but remove those
+    ## samples and time it took
+    message('Starting stan.nuts models')
+    for(idelta in delta){
+      for(imetric in metric){
+        fit.stan.nuts <-
+          stan(fit=model.stan, data=data.stan, iter=Niter+Nwarmup,
+               warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
+               init=inits.stan, seed=seed,
+               control=list(adapt_engaged=TRUE, adapt_delta=idelta, metric=imetric))
+        sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
+        perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
+        adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts))
+        adapt.list[[k]] <-
+          data.frame(platform='NUTS', seed=seed,
+                     Npar=dim(sims.stan.nuts)[3]-1,
+                     Nsims=dim(sims.stan.nuts)[1],
+                     delta.mean=mean(adapt.nuts$accept_stat__[ind.samples]),
+                     delta.target=idelta,
+                     eps.final=tail(adapt.nuts$stepsize__,1),
+                     nsteps.mean=mean(adapt.nuts$n_leapfrog__[ind.samples]),
+                     nsteps.median=median(adapt.nuts$n_leapfrog__[ind.samples]),
+                     nsteps.sd=sd(adapt.nuts$n_leapfrog__[ind.samples]),
+                     metric=imetric)
         perf.list[[k]] <-
-            data.frame(model=model, platform='jags', seed=seed,
-                       Npar=dim(sims.jags)[3],
-                       time.warmup=time.jags.warmup,
-                       time.sampling=time.jags.sampling,
-                       minESS=min(perf.jags$n_eff),
-                       medianESS=median(perf.jags$n_eff),
-                       Nsims=dim(sims.jags)[1])
+          data.frame(platform='stan.nuts',
+                     seed=seed, delta.target=idelta, metric=imetric,
+                     eps.final=tail(adapt.nuts$stepsize__,1),
+                     Npar=dim(sims.stan.nuts)[3]-1,
+                     time.sampling=get_elapsed_time(fit.stan.nuts)[2],
+                     time.warmup=get_elapsed_time(fit.stan.nuts)[1],
+                     minESS=min(perf.stan.nuts$n_eff),
+                     medianESS=median(perf.stan.nuts$n_eff),
+                     Nsims=dim(sims.stan.nuts)[1])
         k <- k+1
-        rm(sims.jags, perf.jags)
-        ## Use adaptation for eps and diagonal covariances, but remove those
-        ## samples and time it took
-        message('Starting stan.nuts models')
+      }}
+    rm(fit.stan.nuts, sims.stan.nuts, perf.stan.nuts, adapt.nuts)
+    if(!is.null(lambda)){
+      for(ilambda in lambda){
+        message(paste0('Starting stan.hmc',ilambda,' models'))
         for(idelta in delta){
-            fit.stan.nuts <-
-                stan(fit=model.stan, data=data.stan, iter=Niter+Nwarmup,
-                     warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
-                     init=inits.stan, seed=seed,
-                     control=list(adapt_engaged=TRUE, adapt_delta=idelta))
-            sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
-            perf.stan.nuts <- data.frame(rstan::monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
-            adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts))
-            adapt.list[[k]] <- data.frame(model=model, alg='NUTS', seed=seed,
-                                          Npar=dim(sims.stan.nuts)[3]-1,
-                                          Nsims=dim(sims.stan.nuts)[1],
-                                          adapt.nuts)
-            adapt.list[[k]]$iteration <- 1:nrow(adapt.list[[k]])
+          for(imetric in metric){
+            fit.stan.hmc <-
+              stan(fit=model.stan, data=data.stan, iter=Niter+Nwarmup,
+                   warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.stan,
+                   control=list(adapt_engaged=TRUE,
+                     adapt_delta=idelta, metric=imetric, int_time=ilambda))
+            sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
+            adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
+            adapt.list[[k]] <-
+              data.frame(platform=paste0('HMC',ilambda), seed=seed,
+                         Npar=dim(sims.stan.hmc)[3]-1,
+                         Nsims=dim(sims.stan.hmc)[1],
+                         delta.target=idelta,
+                         delta.mean=mean(adapt.hmc$accept_stat__[ind.samples]),
+                         eps.final=tail(adapt.hmc$stepsize__,1),
+                         metric=imetric, lambda=ilambda,
+                         L=tail(adapt.hmc$stepsize__,1)*ilambda,
+                         nsteps.mean=tail(adapt.hmc$stepsize__,1)*ilambda)
+            perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
             perf.list[[k]] <-
-                data.frame(model=model, platform='stan.nuts',
-                           seed=seed, delta.target=idelta,
-                           delta.final=length(adapt.nuts$accept_stat__[-(1:Nwarmup)]),
-                           eps.final=tail(adapt.nuts$stepsize__,1),
-                           Npar=dim(sims.stan.nuts)[3]-1,
-                           time.sampling=get_elapsed_time(fit.stan.nuts)[2],
-                           time.warmup=get_elapsed_time(fit.stan.nuts)[1],
-                           minESS=min(perf.stan.nuts$n_eff),
-                           medianESS=median(perf.stan.nuts$n_eff),
-                           Nsims=dim(sims.stan.nuts)[1])
+              data.frame(platform=paste0('stan.hmc',ilambda),
+                         seed=seed, delta.target=idelta, metric=imetric,
+                         Npar=dim(sims.stan.hmc)[3]-1,
+                         time.sampling=get_elapsed_time(fit.stan.hmc)[2],
+                         time.warmup=get_elapsed_time(fit.stan.hmc)[1],
+                         minESS=min(perf.stan.hmc$n_eff),
+                         medianESS=median(perf.stan.hmc$n_eff),
+                         Nsims=dim(sims.stan.hmc)[1])
             k <- k+1
+            rm(fit.stan.hmc, sims.stan.hmc, perf.stan.hmc, adapt.hmc)
+          }
         }
-        rm(fit.stan.nuts, sims.stan.nuts, perf.stan.nuts)
-        if(!is.null(L)){
-            for(LL in L){
-                message(paste0('Starting stan.hmc',LL,' models'))
-                for(idelta in delta){
-                    fit.stan.hmc <-
-                        stan(fit=model.stan, data=data.stan, iter=Niter+Nwarmup,
-                             warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.stan,
-                             control=list(adapt_engaged=TRUE, adapt_delta=idelta, int_time=LL))
-                    sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
-                    adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
-                    adapt.list[[k]] <-
-                        data.frame(model=model, alg=paste0('HMC',LL), seed=seed,
-                                   Npar=dim(sims.stan.hmc)[3]-1,
-                                   Nsims=dim(sims.stan.hmc)[1],
-                                   adapt.hmc)
-                    adapt.list[[k]]$iteration <- 1:nrow(adapt.list[[k]])
-                    perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
-                    perf.list[[k]] <-
-                        data.frame(model=model, platform=paste0('stan.hmc',LL),
-                                   seed=seed, delta.target=idelta,
-                                   eps.final=tail(adapt.hmc$stepsize__,1),
-                                   delta.final=length(adapt.hmc$accept_stat__[-(1:Nwarmup)]),
-                                   Npar=dim(sims.stan.hmc)[3]-1,
-                                   time.sampling=get_elapsed_time(fit.stan.hmc)[2],
-                                   time.warmup=get_elapsed_time(fit.stan.hmc)[1],
-                                   minESS=min(perf.stan.hmc$n_eff),
-                                   medianESS=median(perf.stan.hmc$n_eff),
-                                   Nsims=dim(sims.stan.hmc)[1])
-                    k <- k+1
-                    rm(fit.stan.hmc, sims.stan.hmc, perf.stan.hmc)
-                }
-            }
-        }
+      }
     }
-    perf <- do.call(rbind.fill, perf.list)
-    perf <- within(perf, {
-                       time.total <- time.warmup+time.sampling
-                       perf <- minESS/time.total
-                   })
-    adapt <- do.call(rbind.fill, adapt.list[!ldply(adapt.list, is.null)])
-    return(invisible(list(adapt=adapt, perf=perf)))
+  }
+  perf <- do.call(rbind.fill, perf.list)
+  perf <- within(perf, {
+                   time.total <- time.warmup+time.sampling
+                   perf <- minESS/time.total
+                 })
+  adapt <- do.call(rbind.fill, adapt.list[!ldply(adapt.list, is.null)])
+  perf$model <- adapt$model <- model
+  return(invisible(list(adapt=adapt, perf=perf)))
 }
 
-#' Make plots comparing the performance of runs for a model.
+#' Make plots comparing the performance of simulated data for a model.
+## #'
+## #' @details Makes plots with Npar (model complexity) on the x-axis and a
+## #' variety of things on the y-axis.
+## #' @param perf A data frame containing model performance data, as returned
+## #' by run.chains
+## #' @param adapt A data frame containing adaptation information from Stan,
+## #' as returned by run.chains.
+## #'
+## #' @return Nothing. Makes plots in local folder of performance comparisons
+## #' and adaptation results
+## plot.simulated.results <- function(perf, adapt){
+##     model.name <- as.character(perf$model[1])
+##     perf$samples.per.time <- perf$minESS/perf$time
+##     perf$minESS <- 100*perf$minESS/perf$Npar
+##     perf.long <- melt(perf, c('model', 'platform', 'seed', 'Npar', 'Nsims'))
+##     perf.long <- ddply(perf.long, .(platform, Npar, variable), mutate,
+##                        mean.value=mean(value))
+##     g <- ggplot(perf.long, aes(Npar, log(value), group=platform, color=platform)) +
+##         geom_jitter(position=position_jitter(width=1.5, height=0), alpha=.5) +
+##             geom_line(data=perf.long, aes(Npar, log(mean.value))) +
+##                 facet_wrap('variable') + ggtitle("Performance Comparison")
+##     ggsave(paste0('plots/',model.name, '_perf_time.png'), g, width=ggwidth, height=ggheight)
+##     adapt$log.stepsize=log(adapt$stepsize__)
+##     adapt.long <- melt(adapt, c('model', 'alg', 'seed', 'Npar', 'Nsims', 'iteration'))
+##     g <- ggplot(adapt, aes(iteration, log.stepsize, group=seed, color=factor(seed))) +
+##         geom_line(alpha=.5, size=.5)+ facet_grid(Npar~alg, scales='fixed') +
+##             ggtitle('Step size adaptation')
+##     ggsave(paste0('plots/',model.name, '_adapt_eps.png'), g, width=ggwidth, height=ggheight)
+##     g <- ggplot(subset(adapt.long, alg=='NUTS' & variable %in% c("treedepth__", "n_divergent__")),
+##                 aes(iteration, value, group=seed, color=factor(seed))) +
+##         geom_line(alpha=.5, size=.5)+ facet_grid(variable~Npar,
+##                             scales='free') + ggtitle('NUTS tuning metrics')
+##     ggsave(paste0('plots/',model.name, '_adapt_NUTS.png'), g, width=ggwidth, height=ggheight)
+## }
+
+#' Make plots comparing the performance of empirical data for a model.
 #'
+#' @details Makes plots with delta (acceptance rate) on the x-axis and a
+#' variety of things on the y-axis.
 #' @param perf A data frame containing model performance data, as returned
 #' by run.chains
 #' @param adapt A data frame containing adaptation information from Stan,
 #' as returned by run.chains.
-plot.model.results <- function(perf, adapt){
+#'
+#' @return Nothing. Makes plots in local folder of performance comparisons
+#' and adaptation results
+plot.empirical.results <- function(perf, adapt){
     model.name <- as.character(perf$model[1])
-    perf$samples.per.time <- perf$minESS/perf$time
-    perf$minESS <- 100*perf$minESS/perf$Npar
-    perf.long <- melt(perf, c('model', 'platform', 'seed', 'Npar', 'Nsims'))
-    perf.long <- ddply(perf.long, .(platform, Npar, variable), mutate,
-                       mean.value=mean(value))
-    g <- ggplot(perf.long, aes(Npar, log(value), group=platform, color=platform)) +
-        geom_jitter(position=position_jitter(width=1.5, height=0), alpha=.5) +
-            geom_line(data=perf.long, aes(Npar, log(mean.value))) +
-                facet_wrap('variable') + ggtitle("Performance Comparison")
-    ggsave(paste0('plots/',model.name, '_perf_time.png'), g, width=ggwidth, height=ggheight)
-    adapt$log.stepsize=log(adapt$stepsize__)
-    adapt.long <- melt(adapt, c('model', 'alg', 'seed', 'Npar', 'Nsims', 'iteration'))
-    g <- ggplot(adapt, aes(iteration, log.stepsize, group=seed, color=factor(seed))) +
-        geom_line(alpha=.5, size=.5)+ facet_grid(Npar~alg, scales='fixed') +
-            ggtitle('Step size adaptation')
-    ggsave(paste0('plots/',model.name, '_adapt_eps.png'), g, width=ggwidth, height=ggheight)
-    g <- ggplot(subset(adapt.long, alg=='NUTS' & variable %in% c("treedepth__", "n_divergent__")),
-                aes(iteration, value, group=seed, color=factor(seed))) +
-        geom_line(alpha=.5, size=.5)+ facet_grid(variable~Npar,
-                            scales='free') + ggtitle('NUTS tuning metrics')
+    perf.long <-
+      melt(perf, id.vars=c('platform', 'seed', 'delta.target', 'metric'),
+           measure.vars=c('time.warmup', 'time.sampling', 'minESS',
+             'perf'))
+    perf.long$seed2 <- as.factor(with(perf.long, paste(seed, metric, sep="_")))
+    ggplot(perf.long, aes(delta.target, value, group=seed2, color=metric))+
+      geom_line() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
+
+
+
+    perf2 <- droplevels(subset(perf, platform!='jags'))
+    perf.jags <- subset(perf, platform=='jags')
+    g <- ggplot(perf2, aes(delta.target, samples.per.time, group=seed))+ geom_line()+
+        facet_grid(.~platform) + geom_hline(yintercept=perf.jags$perf,
+                                            color='red', alpha=.5)
+    ggsave(paste0('plots/',model.name, '_perf.png'), g, width=ggwidth, height=ggheight)
+
+    adapt.long <- melt(adapt, id.vars=c('platform', 'seed', 'delta.target', 'metric'),
+                       measure.vars=c('eps.final', 'delta.mean', 'nsteps.mean'))
+    adapt.long$seed2 <- as.factor(with(adapt.long, paste(seed, metric, sep="_")))
+    ggplot(adapt.long, aes(delta.target, value, group=seed2, color=metric))+
+      geom_line() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
     ggsave(paste0('plots/',model.name, '_adapt_NUTS.png'), g, width=ggwidth, height=ggheight)
-}
+  }
+
 
 #' Verify the models are the same (coding errors) by plotting QQ plots of
 #' each parameter between Stan and JAGS.
