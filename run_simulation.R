@@ -11,20 +11,6 @@ source("startup.R")
 Nout <- 5000
 n.burnin <- 2000
 n.thin <- 1
-
-## source("run_growth.R")
-Nyears.vec <- c(20, 50, 100, 200, 500)
-L.vec <- c(1,5, 20)
-seeds <- c(4,6,1, 48, 10)
-source('ss_logistic/run_chains.R')
-
-
-## Parameters for the short chains, long ones (to verify models are the
-## same) are specified in each file and differ.
-n.iter1 <- 50000
-n.burnin1 <- min(2000,.2*n.iter1)
-source("ehook/ehook_run.R")
-
 ### End of Step 0.
 ### ------------------------------------------------------------
 
@@ -59,6 +45,20 @@ setwd('..')
 
 
 ### ------------------------------------------------------------
+
+## source("run_growth.R")
+Nyears.vec <- c(20, 50, 100, 200, 500)
+L.vec <- c(1,5, 20)
+seeds <- c(4,6,1, 48, 10)
+source('ss_logistic/run_chains.R')
+
+
+## Parameters for the short chains, long ones (to verify models are the
+## same) are specified in each file and differ.
+n.iter1 <- 50000
+n.burnin1 <- min(2000,.2*n.iter1)
+source("ehook/ehook_run.R")
+
 
 ## Speed tests for Stan algorithms. HMC should scale linearly with int_time
 ## and NUTS should be similar for average n_leapfrog__ for the warmup and

@@ -18,21 +18,19 @@ verify.models(params.jag=params.jags, model.jag='mvn.jags',
               model.stan='mvn.stan', inits.stan=inits.stan,
               data.stan=data.stan, Niter=1e6, Nthin=1000)
 
+## model.jags <- jags(model.file='mvn.jags', inits=inits.jags, para=params.jags,
+##                    n.chains=1, data=data.jags)
+## model.stan <- stan(file='mvn.stan', data=data.stan, iter=50, chains=1, alg='HMC',
+##                    warmup=10, thin=1, init=inits.stan, control=list(metric='unit_e'))
+## xx <- as.data.frame(get_sampler_params(model.stan))
+
 ## Now rerun across gradient of acceptance rates and compare to JAGS
-model.stan <- stan(file='mvn.stan', data=data.stan, iter=50, chains=1,
-                   warmup=10, thin=1, init=inits.stan)
-xx <- as.data.frame(get_sampler_params(model.stan))
-
-yy <- run.chains(model=m, seeds=2, Nout=1000, L=c(.1,1),
-                 delta=c(.3,.4,.5,.8,.9, .95, .99),
-                 data.jags=data.jags, Nthin=3,
-                 inits.jags=inits.jags, params.jags=params.jags,
-                 data.stan=data.stan, inits.stan=inits.stan)
-
-perf2 <- subset(yy$perf, platform!='jags')
-perf.jags <- subset(yy$perf, platform=='jags')
-ggplot(perf2, aes(delta.final, perf, group=seed))+ geom_line()+
-    facet_grid(.~platform) + geom_hline(yintercept=perf.jags$perf)
-ggplot(perf2, aes(delta.target, delta.final, color=platform))+
-    geom_point() + xlim(0,1) + ylim(0,1)
-
+results.empirical <-
+    run.chains(model=m, seeds=1:3, Nout=10000, lambda=c(.1,1),
+               metric=c('diag_e', 'dense_e'),
+               delta=c(.3,.5,.8, .95), data.jags=data.jags,
+               Nthin=1, inits.jags=inits.jags, params.jags=params.jags,
+               data.stan=data.stan, inits.stan=inits.stan)
+perf <- results.empirical$perf
+adapt <- results.empirical$adapt
+plot.empirical.results(perf, adapt)
