@@ -93,7 +93,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     time.jags.warmup <- as.vector(system.time(temp <-
       jags(data=data.jags, parameters.to.save=params.jags, inits=inits.jags,
            model.file=model.jags, n.chains=1, DIC=FALSE,
-           n.iter=Nwarmup+10, n.burnin=Nwarmup, n.thin=1)))[3]
+                      n.iter=Nwarmup+10, n.burnin=Nwarmup, n.thin=1)))[3]
     ## Rerun with those tunings to get efficiency
     time.jags.sampling <-
       as.vector(system.time(fit.jags <- update(temp, n.iter=Niter, n.thin=Nthin))[3])
@@ -246,24 +246,15 @@ plot.empirical.results <- function(perf, adapt){
            measure.vars=c('time.warmup', 'time.sampling', 'minESS',
              'perf'))
     perf.long$seed2 <- as.factor(with(perf.long, paste(seed, metric, sep="_")))
-    ggplot(perf.long, aes(delta.target, value, group=seed2, color=metric))+
-      geom_line() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
-
-
-
-    perf2 <- droplevels(subset(perf, platform!='jags'))
-    perf.jags <- subset(perf, platform=='jags')
-    g <- ggplot(perf2, aes(delta.target, samples.per.time, group=seed))+ geom_line()+
-        facet_grid(.~platform) + geom_hline(yintercept=perf.jags$perf,
-                                            color='red', alpha=.5)
+    g <- ggplot(perf.long, aes(delta.target, log(value), group=seed2, color=metric))+
+      geom_line() + geom_point() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
     ggsave(paste0('plots/',model.name, '_perf.png'), g, width=ggwidth, height=ggheight)
-
     adapt.long <- melt(adapt, id.vars=c('platform', 'seed', 'delta.target', 'metric'),
                        measure.vars=c('eps.final', 'delta.mean', 'nsteps.mean'))
     adapt.long$seed2 <- as.factor(with(adapt.long, paste(seed, metric, sep="_")))
-    ggplot(adapt.long, aes(delta.target, value, group=seed2, color=metric))+
+    g <- ggplot(adapt.long, aes(delta.target, value, group=seed2, color=metric))+
       geom_line() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
-    ggsave(paste0('plots/',model.name, '_adapt_NUTS.png'), g, width=ggwidth, height=ggheight)
+    ggsave(paste0('plots/',model.name, '_adapt.png'), g, width=ggwidth, height=ggheight)
   }
 
 
