@@ -1,33 +1,38 @@
 ## Sourcing this file will run everything for this model, given the MCMC
 ## arguments are in the global workspace.
-model.name <- 'mvn'
 
+## Load empirical data and inits
+Npar <- 5
+covar <- rWishart(n=1, df=Npar, Sigma=diag(Npar))[,,1]
+data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
+inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
+params.jags <- 'mu'
 
-source('fit_empirical.R')
-source('fit_simulated.R')
+## Get independent samples from each model to make sure they are coded the
+## same
+fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
+              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind)
 
-## setwd(model.name)
-## xx <- list()
-## for(Nyears in Nyears.vec){
-##     ## Reproducible data since seed set inside the function
-##     message(paste("======== Starting Nyears=", Nyears))
-##     set.seed(115)
-##     trash <- capture.output(source("load_models.R"))
-##     xx[[Nyears]] <-
-##         run.chains(model.name='ss_logistic', model.jags=model.jags, model.stan=model.stan,
-##                    inits.jags=inits.jags, params.jags=params.jags, data.jags=data.jags,
-##                    inits.stan=inits.stan, params.stan=params.stan, data.stan=data.stan,
-##                    seeds=seeds, Nout=Nout, n.burnin=n.burnin, n.thin=n.thin,
-##                    L=L.vec)
-##     ## Save them as we go in case it fails
-##     perf <- do.call(rbind, do.call(rbind, lapply(xx, function(x) x[['perf.list']])))
-##     trash <- do.call(rbind, lapply(xx, function(x) x[['adapt.list']]))
-##     adapt <- do.call(rbind.fill, trash[!sapply(trash, is.null)])
-##     saveRDS(perf, 'results/perf.RDS')
-##     saveRDS(adapt, 'results/adapt.RDS')
-## }
-## message("Making  plots")
-## perf <- readRDS('results/perf.RDS')
-## adapt <- readRDS('results/adapt.RDS')
-## plot.model.results(perf, adapt)
-## setwd('..')
+## Now loop through model sizes and run for default parameters, using JAGS
+## and NUTS only.
+Npar.vec <- c(5, 10, 20)
+adapt.list <- perf.list <- list()
+for(i in seq_along(Npar.vec)){
+    Npar <- Npar.vec[i]
+    ## Reproducible data since seed set inside the function
+    message(paste("======== Starting Npar=", Npar))
+    set.seed(115)
+    source("generate_data.R")
+    temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
+                   seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
+    adapt.list[[i]] <- temp$adapt
+    perf.list[[i]] <- temp$perf
+    ## Save them as we go in case it fails
+    perf <- do.call(rbind, perf.list)
+    adapt <- do.call(rbind, adapt.list)
+    write.csv(x=perf, file=results.file(paste0(m,'_perf_simulated.csv')))
+    write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
+    rm(temp)
+}
+message("Making plots...")
+plot.simulated.results(perf, adapt)

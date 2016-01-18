@@ -8,21 +8,18 @@
 ### Step 0: prepare working space; load libraries, functions, and global
 ### variables
 source("startup.R")
-Nout <- 5000
-n.burnin <- 2000
-n.thin <- 1
+Nout.ind <- 1000
+seeds <- c(1:3)
+lambda.vec <- c(.1, .5, 1, 2)
 ### End of Step 0.
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
 ### Step 1: Loop through each model and fit empirical and simulated data
-models <- 'mvn'
-for(m in models){
-setwd(m)
-source('fit_empirical.R')
-source('fit_simulated.R')
-setwd('..')
-}
+m <- 'mvn'
+Nout <- 500; Nthin <- 1; Nthin.ind <- 100
+setwd(m); source('run_model.R'); setwd('..')
+
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
@@ -45,6 +42,17 @@ setwd('..')
 
 
 ### ------------------------------------------------------------
+
+fit.jags <- jags(model.file='mvn.jags', inits=inits.jags, para=params.jags,
+                   n.chains=1, data=data.jags)
+sims.jags <- fit.jags$BUGSoutput$sims.array
+fit.stan <- stan(file='mvn.stan', data=data.stan, iter=50, chains=1, alg='HMC',
+                   warmup=10, thin=1, init=inits.stan, control=list(metric='unit_e'))
+sims.stan.hmc <- extract(fit.stan, permuted=FALSE)
+minESS.coda <- min(coda::effectiveSize(as.data.frame(sims.stan.hmc[,1,])))
+
+xx <- as.data.frame(get_sampler_params(model.stan))
+
 
 ## source("run_growth.R")
 Nyears.vec <- c(20, 50, 100, 200, 500)
