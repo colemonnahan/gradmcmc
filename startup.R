@@ -199,7 +199,8 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
 
 #' Verify models and then run empirical tests across delta
 fit.empirical <- function(model, params.jags, model.jags, inits, data,
-                          model.stan, Nout, Nout.ind, Nthin=1, Nthin.ind){
+                          delta, lambda, model.stan, Nout, Nout.ind,
+                          Nthin=1, Nthin.ind){
 
     ## First get independent samples to verify the models are the same
     verify.models(model=model, params.jag=params.jags, inits=inits, data=data,
@@ -208,10 +209,9 @@ fit.empirical <- function(model, params.jags, model.jags, inits, data,
 
     ## Now rerun across gradient of acceptance rates and compare to JAGS
     results.empirical <-
-        run.chains(model=model, seeds=1:3, Nout=200, lambda=c(.1,1),
-                   metric=c('diag_e', 'dense_e'),
-                   delta=c(.3,.5,.8, .95), data=data,
-                   Nthin=1, inits=inits, params.jags=params.jags)
+      run.chains(model=model, seeds=seeds, Nout=Nout, lambda=lambda,
+                 metric=c('diag_e', 'dense_e'), delta=delta, data=data,
+                 Nthin=Nthin, inits=inits, params.jags=params.jags)
     with(results.empirical, plot.empirical.results(perf, adapt))
     write.csv(file=results.file(paste0(m, '_adapt_empirical.csv')), results.empirical$adapt)
     write.csv(file=results.file(paste0(m, '_perf_empirical.csv')), results.empirical$perf)
@@ -295,7 +295,7 @@ plot.model.comparisons <- function(sims.stan, sims.jags){
     names(sims.stan) <- gsub('\\.', '', x=names(sims.stan))
     names(sims.jags) <- gsub('\\.', '', x=names(sims.jags))
     sims.stan$lp__ <- sims.jags$deviance <- NULL
-    par.names <- names(sims.stan)
+    par.names <- names(sims.jags)
     sims.jags <- sims.jags[,par.names]
     ## Massage qqplot results into long format for ggplot
     qq <- ldply(par.names, function(i){
@@ -313,21 +313,20 @@ plot.model.comparisons <- function(sims.stan, sims.jags){
 #' between models before doing performance comparisons
 #'
 verify.models <- function(model, params.jags, inits, data, Niter, Nthin){
-    model.jags <- paste0(model, '.jags')
-    model.stan <- paste0(model, '.stan')
-    Nwarmup <- Niter/2
-    fit.jags <- jags(data=data, inits=inits, param=params.jags,
-                     model.file=model.jags, n.chains=1, n.burnin=Nwarmup, n.iter=Niter,
-                     n.thin=Nthin)
-    sims.jags <- data.frame(fit.jags$BUGSoutput$sims.matrix)
-    array.jags <- fit.jags$BUGSoutput$sims.array
-    fit.stan <- stan(file=model.stan, data=data, iter=Niter, chains=1,
-                     warmup=Nwarmup, thin=Nthin, init=inits)
-    sims.stan <- data.frame(extract(fit.stan, permuted=FALSE)[,1,])
-    jags.ess <- data.frame(monitor(sims=fit.jags$BUGSoutput$sims.array, warmup=0, print=FALSE, probs=.5))$n_eff
-    stan.ess <- data.frame(monitor(sims=extract(fit.stan, permuted=FALSE), warmup=0, print=FALSE, probs=.5))$n_eff
-    plot.model.comparisons(sims.stan, sims.jags)
-    print(rbind(jags.ess, stan.ess))
+  model.jags <- paste0(model, '.jags')
+  model.stan <- paste0(model, '.stan')
+  Nwarmup <- Niter/2
+  fit.jags <- jags(data=data, inits=inits, param=params.jags,
+                   model.file=model.jags, n.chains=1, n.burnin=Nwarmup, n.iter=Niter,
+                   n.thin=Nthin)
+  sims.jags <- data.frame(fit.jags$BUGSoutput$sims.matrix)
+  fit.stan <- stan(file=model.stan, data=data, iter=Niter, chains=1,
+                   warmup=Nwarmup, thin=Nthin, init=inits)
+  sims.stan <- data.frame(extract(fit.stan, permuted=FALSE)[,1,])
+  jags.ess <- data.frame(monitor(sims=fit.jags$BUGSoutput$sims.array, warmup=0, print=FALSE, probs=.5))$n_eff
+  stan.ess <- data.frame(monitor(sims=extract(fit.stan, permuted=FALSE), warmup=0, print=FALSE, probs=.5))$n_eff
+  plot.model.comparisons(sims.stan, sims.jags)
+  print(rbind(jags.ess, stan.ess))
 }
 make.trace <- function(df.thinned, model, string){
     nrows <- ceiling(sqrt(ncol(df.thinned)))

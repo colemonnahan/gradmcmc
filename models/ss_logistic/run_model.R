@@ -2,18 +2,20 @@
 ## arguments are in the global workspace.
 
 ## Load empirical data and inits
-Npar <- 5
-covar <- rWishart(n=1, df=Npar, Sigma=diag(Npar))[,,1]
-data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
-inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
-params.jags <- 'mu'
+dat <- read.csv('tuna_data.csv')
+cpue <- dat$CPUE
+catches <- dat$Catches
+data <- list(catches=catches, logcpue=log(cpue), N=nrow(dat))
+inits <- list(list(logr=log(.8), logK=log(279), iq=5, isigma2=100, itau2=100,
+             u=rep(0, len=nrow(dat))))
+params.jags <- c('logr', 'logK', 'isigma2', 'iq', 'itau2', 'u')
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec,
-              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind)
-
+              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
+              delta=delta.vec, lambda=lambda.vec)
+summary(sims.jags)
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
 Npar.vec <- c(5, 10, 20)

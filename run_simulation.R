@@ -11,6 +11,7 @@ source("startup.R")
 Nout.ind <- 1000
 seeds <- c(1:3)
 lambda.vec <- c(.1, .5, 1, 2)
+delta.vec <- c(.2,.5, .7, .8, .9, .95)
 ### End of Step 0.
 ### ------------------------------------------------------------
 
@@ -18,7 +19,11 @@ lambda.vec <- c(.1, .5, 1, 2)
 ### Step 1: Loop through each model and fit empirical and simulated data
 m <- 'mvn'
 Nout <- 500; Nthin <- 1; Nthin.ind <- 100
-setwd(m); source('run_model.R'); setwd('..')
+setwd(paste0('models/',m)); source('run_model.R'); setwd('..')
+
+m <- 'ss_logistic'
+Nout <- 500; Nthin <- 1; Nthin.ind <- 100
+setwd(paste0('models/',m)); source('run_model.R'); setwd('..')
 
 ### End of Step 1.
 ### ------------------------------------------------------------
