@@ -12,6 +12,7 @@ Nout.ind <- 1000
 seeds <- c(1:6)
 lambda.vec <- NULL
 delta.vec <- c(.2,.5, .7, .8, .9, .95)
+metric <- c('unit_e', 'diag_e', 'dense_e')
 ### End of Step 0.
 ### ------------------------------------------------------------
 
@@ -21,6 +22,14 @@ m <- 'mvn'
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
 Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
+
+m <- 'growth'
+Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
+## Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
+Npar.vec <- c(5,10,20)
+source(paste0('models/',m,'/run_model.R'))
+
+
 
 m <- 'ss_logistic'
 Nout <- 500; Nthin <- 1; Nthin.ind <- 100

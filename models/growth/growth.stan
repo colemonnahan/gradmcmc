@@ -1,5 +1,3 @@
-// The Hamley and Skud effective hook model.
-
 data {
   int<lower=0> Nfish; // number of groups
   int<lower=0> Nobs;   // number of observations

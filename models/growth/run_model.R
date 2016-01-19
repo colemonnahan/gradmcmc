@@ -1,0 +1,62 @@
+## Sourcing this file will run everything for this model, given the MCMC
+## arguments are in the global workspace.
+setwd(paste0('models/',m))
+
+## The true values used for empirical and simulated data
+logLinf.mean <- log(50)
+logk.mean <- log(.1)
+t0 <- 6
+logLinf.sigma <- .1
+logk.sigma <- .2
+Ntime <- 40
+sigma.obs <- .1
+Nfish <- 30
+set.seed(115)
+dat <- sample.lengths(Nfish=Nfish, n.ages=5, logLinf.mean=logLinf.mean,
+                           logLinf.sigma=logLinf.sigma, logk.mean=logk.mean,
+                           logk.sigma=logk.sigma, sigma.obs=sigma.obs, t0=t0)
+g <- ggplot(dat, aes(ages, loglengths, group=fish, color=fish)) +
+    geom_point(alpha=.5) + geom_line()
+ggsave('plots/simulated_growth.png', g, width=9, height=5)
+data <- list(Nfish=Nfish, Nobs=nrow(dat), loglengths=dat$loglengths,
+                  fish=dat$fish, ages=dat$ages)
+inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
+                  logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
+                  logLinf=rep(logLinf.mean, len=Nfish),
+                  logk=rep(logk.mean, len=Nfish)))
+params.jags <-
+    c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma",
+      "sigma_obs", "logk", "logLinf")
+
+
+## Get independent samples from each model to make sure they are coded the
+## same
+fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
+              lambda=lambda.vec, delta=delta.vec, metric=metric,
+              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
+              verify=FALSE)
+
+## Now loop through model sizes and run for default parameters, using JAGS
+## and NUTS only.
+adapt.list <- perf.list <- list()
+for(i in seq_along(Npar.vec)){
+    Npar <- Npar.vec[i]
+    ## Reproducible data since seed set inside the function
+    message(paste("======== Starting Npar=", Npar))
+    set.seed(115)
+    source("generate_data.R")
+    temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
+                   seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
+    adapt.list[[i]] <- temp$adapt
+    perf.list[[i]] <- temp$perf
+    ## Save them as we go in case it fails
+    perf <- do.call(rbind, perf.list)
+    adapt <- do.call(rbind, adapt.list)
+    plot.simulated.results(perf, adapt)
+    write.csv(x=perf, file=results.file(paste0(m,'_perf_simulated.csv')))
+    write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
+    rm(temp)
+}
+message(paste('Finished with model:', m))
+setwd('../..')
+

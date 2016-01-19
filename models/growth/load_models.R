@@ -75,8 +75,8 @@ model.jags <- function(){
         loglengths[i]~dnorm(log(ypred[i]), pow(sigma_obs, -2))
     }
 }
-## temp <- jags(data=data.jags, inits=list(init), param=params.jags, model.file=model.jags,
-##      n.chains=1, n.burnin=1000, n.iter=5000, n.thin=1)
+temp <- jags(data=data, inits=inits, param=params.jags, model.file='growth.jags',
+     n.chains=1, n.burnin=1000, n.iter=5000, n.thin=1)
 ## End of JAGS
 ### ------------------------------------------------------------
 
@@ -86,8 +86,8 @@ data.stan <- data
 ## Run a dummy chain to get the compilation out of the way for more
 ## sensible speed comparisons
 inits.stan <- list(init)
-model.stan <- stan(file='growth.stan', data=data.stan, iter=50, chains=1,
-                   warmup=10, thin=1, init=inits.stan)
+model.stan <- stan(file='growth.stan', data=data, iter=50, chains=1,
+                   warmup=10, thin=1, init=inits)
 ## temp <- stan(fit=model.stan, data=data.stan, iter=5000, chains=1,
 ##                    warmup=1000, thin=1, init=inits.stan)
 rm(dat, data, init,  logk.mean, logk.sigma, logLinf.mean, logLinf.sigma,

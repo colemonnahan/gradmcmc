@@ -67,25 +67,25 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                        sink.console=TRUE){
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
-  if(Nthin != 1) stop("Nthin must be one, delta.final calculation breaks otherwise")
+  if(Nthin != 1)
+      stop("Nthin must be one, delta.final calculation may break otherwise")
   Niter <- Nout*Nthin
   Nwarmup <- Niter/2
   ind.samples <- (Nwarmup/Nthin+1):Nout    # index of samples, excluding warmup
   ind.warmup <- 1:(Nwarmup/Nthin)             # index of warmup samples
   perf.list <- list()
   adapt.list <- list()
-  ## Precompile Stan model so it isn't done repeatedly and isn't in the
-  ## timings
-  model.stan <-
-    stan(file=model.stan, data=data, iter=100,
-         warmup=50, chains=1, thin=1, algorithm='NUTS',
-         init=inits, seed=1, verbose=FALSE,
-         control=list(adapt_engaged=FALSE))
   k <- 1
   if(sink.console){
     sink(file='trash.txt', append=FALSE, type='output')
     on.exit(sink())
   }
+  ## Precompile Stan model so it isn't done repeatedly and isn't in the
+  ## timings
+  model.stan <- stan(file=model.stan, data=data, iter=100,
+         warmup=50, chains=1, thin=1, algorithm='NUTS',
+         init=inits, seed=1, verbose=FALSE,
+         control=list(adapt_engaged=FALSE))
   for(seed in seeds){
     message(paste('==== Starting seed',seed, 'at', Sys.time()))
     set.seed(seed)
@@ -199,18 +199,20 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
 
 #' Verify models and then run empirical tests across delta
 fit.empirical <- function(model, params.jags, model.jags, inits, data,
-                          delta, lambda, model.stan, Nout, Nout.ind,
-                          Nthin=1, Nthin.ind){
+                          delta, lambda, model.stan, Nout, Nout.ind, metric,
+                          Nthin=1, Nthin.ind, verify=TRUE){
 
     ## First get independent samples to verify the models are the same
-    verify.models(model=model, params.jag=params.jags, inits=inits, data=data,
+    message('Starting independent sampling')
+    if(verify) verify.models(model=model, params.jag=params.jags, inits=inits, data=data,
                   Niter=2*(Nthin.ind*Nout.ind), Nthin=Nthin.ind)
 
 
     ## Now rerun across gradient of acceptance rates and compare to JAGS
+    message('Starting empirical runs')
     results.empirical <-
       run.chains(model=model, seeds=seeds, Nout=Nout, lambda=lambda,
-                 metric=c('diag_e', 'dense_e'), delta=delta, data=data,
+                 metric=metric, delta=delta, data=data,
                  Nthin=Nthin, inits=inits, params.jags=params.jags)
     with(results.empirical, plot.empirical.results(perf, adapt))
     write.csv(file=results.file(paste0(m, '_adapt_empirical.csv')), results.empirical$adapt)
@@ -304,7 +306,8 @@ plot.model.comparisons <- function(sims.stan, sims.jags){
                 })
     g <- ggplot(qq, aes(x,y))+ geom_point(alpha=.5) +
         geom_abline(slope=1, col='red') + facet_wrap('i', scales='free') +
-            xlab('jags')+ ylab('stan')
+            xlab('jags')+ ylab('stan') +
+                theme(axis.text.x=element_blank(), axis.text.y=element_blank())
     ggsave('plots/model_comparison.png', width=9, height=5)
     return(invisible(g))
 }
@@ -350,4 +353,21 @@ make.acf <- function(df, model, string){
         title(names(df)[i], line=-1)
     }
     dev.off()
+}
+
+## Growth model functions
+sample.vbgf <- function(ages, Linf, k,  t0, sigma.obs){
+    lengths <- Linf*(1-exp(-k*(ages-t0)))
+    loglengths <- log(lengths)+ rnorm(n=length(lengths), mean=0, sd=sigma.obs)
+    data.frame(ages=ages, loglengths=loglengths)
+}
+sample.ages <- function(n.ages, t0, Ntime) {sample((t0+1):Ntime, size=n.ages, replace=FALSE)}
+sample.lengths <- function(Nfish, n.ages, logLinf.mean, logLinf.sigma,
+                           logk.mean, logk.sigma, sigma.obs, t0){
+    Linf.vec <- exp(logLinf.mean + rnorm(n=Nfish, 0, sd=logLinf.sigma))
+    k.vec <- exp(logk.mean +rnorm(n=Nfish, mean=0, sd=logk.sigma))
+    dat <- ldply(1:Nfish, function(i)
+        cbind(fish=i, sample.vbgf(ages=sample.ages(n.ages, t0=t0, Ntime=Ntime),
+              Linf=Linf.vec[i], k=k.vec[i], sigma.obs=sigma.obs, t0=t0)))
+   return( dat)
 }
