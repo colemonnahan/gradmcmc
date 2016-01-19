@@ -9,8 +9,8 @@
 ### variables
 source("startup.R")
 Nout.ind <- 1000
-seeds <- c(1:3)
-lambda.vec <- c(.1, .5, 1, 2)
+seeds <- c(1:6)
+lambda.vec <- NULL
 delta.vec <- c(.2,.5, .7, .8, .9, .95)
 ### End of Step 0.
 ### ------------------------------------------------------------
@@ -18,8 +18,9 @@ delta.vec <- c(.2,.5, .7, .8, .9, .95)
 ### ------------------------------------------------------------
 ### Step 1: Loop through each model and fit empirical and simulated data
 m <- 'mvn'
-Nout <- 500; Nthin <- 1; Nthin.ind <- 100
-setwd(paste0('models/',m)); source('run_model.R'); setwd('..')
+Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
+Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
+source(paste0('models/',m,'/run_model.R'))
 
 m <- 'ss_logistic'
 Nout <- 500; Nthin <- 1; Nthin.ind <- 100

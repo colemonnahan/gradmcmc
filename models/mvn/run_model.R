@@ -2,6 +2,7 @@
 ## arguments are in the global workspace.
 
 ## Load empirical data and inits
+setwd(paste0('models/',m))
 Npar <- 5
 covar <- rWishart(n=1, df=Npar, Sigma=diag(Npar))[,,1]
 data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
@@ -16,7 +17,6 @@ fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
-Npar.vec <- c(5, 10, 20)
 adapt.list <- perf.list <- list()
 for(i in seq_along(Npar.vec)){
     Npar <- Npar.vec[i]
@@ -37,3 +37,5 @@ for(i in seq_along(Npar.vec)){
 }
 message("Making plots...")
 plot.simulated.results(perf, adapt)
+
+setwd('../..')
