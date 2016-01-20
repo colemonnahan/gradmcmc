@@ -2,6 +2,7 @@
 ## arguments are in the global workspace.
 setwd(paste0('models/',m))
 
+## Load empirical data and inits
 ## The true values used for empirical and simulated data
 logLinf.mean <- log(50)
 logk.mean <- log(.1)
@@ -34,7 +35,7 @@ params.jags <-
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
               lambda=lambda.vec, delta=delta.vec, metric=metric,
               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              verify=FALSE)
+              verify=TRUE)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.

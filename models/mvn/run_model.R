@@ -1,8 +1,8 @@
 ## Sourcing this file will run everything for this model, given the MCMC
 ## arguments are in the global workspace.
+setwd(paste0('models/',m))
 
 ## Load empirical data and inits
-setwd(paste0('models/',m))
 Npar <- 5
 covar <- rWishart(n=1, df=Npar, Sigma=diag(Npar))[,,1]
 data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
@@ -13,7 +13,8 @@ params.jags <- 'mu'
 ## same
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
               lambda=lambda.vec, delta=delta.vec,
-              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind)
+              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
+              verify=TRUE)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
@@ -31,11 +32,10 @@ for(i in seq_along(Npar.vec)){
     ## Save them as we go in case it fails
     perf <- do.call(rbind, perf.list)
     adapt <- do.call(rbind, adapt.list)
+    plot.simulated.results(perf, adapt)
     write.csv(x=perf, file=results.file(paste0(m,'_perf_simulated.csv')))
     write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
     rm(temp)
 }
-message("Making plots...")
-plot.simulated.results(perf, adapt)
-
+message(paste('Finished with model:', m))
 setwd('../..')
