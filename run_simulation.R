@@ -28,9 +28,12 @@ Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
 Npar.vec <- c(5,10,50, 100, 200, 500, 1000)[1:3]
 source(paste0('models/',m,'/run_model.R'))
 
-m <- 'ss_logistic'
-Nout <- 500; Nthin <- 1; Nthin.ind <- 100
-setwd(paste0('models/',m)); source('run_model.R'); setwd('..')
+m <- 'growth2'
+Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
+Npar.vec <- c(5,10,50, 100, 200, 500, 1000)[1:3]
+source(paste0('models/',m,'/run_model.R'))
+
+
 
 ### End of Step 1.
 ### ------------------------------------------------------------
@@ -54,12 +57,29 @@ setwd(paste0('models/',m)); source('run_model.R'); setwd('..')
 
 
 ### ------------------------------------------------------------
+## Development code
+## Play with Neal's funnel from p205 of manual
+y <- rnorm(1e3, 0, 3)
+x <- rnorm(1e3, 0, sd=exp(y/2))
+plot(x, y)
+yraw <- rnorm(1e3, 0, 1)
+xraw <- rnorm(1e3, 0, 1)
+y2 <- 3*yraw
+x2 <- exp(y2/2)*xraw
+points(x2,y2, col='red')
+sigma <- abs(rnorm(1e3, 10, 3))
+mu <- 5#rnorm(1e3, 5, 1)
+beta <- rnorm(1e3, mu, sigma)
+plot(sigma, beta)
+beta.raw <- rnorm(1e3,0,1)
+points(sigma, mu+sigma*beta.raw, pch=16, col='red')
+plot(sigma, beta.raw, pch=16, col='red')
 
 fit.jags <- jags(model.file='mvn.jags', inits=inits.jags, para=params.jags,
                    n.chains=1, data=data.jags)
 sims.jags <- fit.jags$BUGSoutput$sims.array
-fit.stan <- stan(file='mvn.stan', data=data.stan, iter=50, chains=1, alg='HMC',
-                   warmup=10, thin=1, init=inits.stan, control=list(metric='unit_e'))
+fit.stan <- stan(file='growth2.stan', data=data, iter=5000, chains=1, alg='HMC',
+                   thin=1, init=inits, control=list(metric='unit_e'))
 sims.stan.hmc <- extract(fit.stan, permuted=FALSE)
 minESS.coda <- min(coda::effectiveSize(as.data.frame(sims.stan.hmc[,1,])))
 
