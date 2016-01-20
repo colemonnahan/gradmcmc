@@ -7,8 +7,8 @@
 ### ------------------------------------------------------------
 ### Step 0: prepare working space; load libraries, functions, and global
 ### variables
-main.dir <- 'C:/Users/Cole/gradmcmc/'
 main.dir <- 'D:/gradmcmc/'
+main.dir <- 'C:/Users/Cole/gradmcmc/'
 setwd(main.dir)
 source("startup.R")
 Nout.ind <- 1000
@@ -28,11 +28,11 @@ source(paste0('models/',m,'/run_model.R'))
 
 m <- 'growth'
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
-Npar.vec <- c(5,10,50, 100, 200, 500, 1000)[-(1:3)]
+Npar.vec <- c(5,10,50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
 
 m <- 'growth2'
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
+Nout <- 5000; Nthin <- 1; Nthin.ind <- 50
 Npar.vec <- c(5,10,50, 100, 200, 500, 1000)[1:3]
 source(paste0('models/',m,'/run_model.R'))
 
@@ -50,11 +50,26 @@ source(paste0('models/',m,'/run_model.R'))
 
 ### ------------------------------------------------------------
 ### Step 3: Load and prepare data
+perf.empirical <- ldply(list.files('results', pattern='perf_empirical'), function(i)
+    read.csv(paste0('results/',i)))
+perf.empirical.means <-
+    ddply(perf.empirical, .(platform, model, delta.target), summarize,
+          mean.samples.per.time=mean(samples.per.time))
+perf.empirical.means <- ddply(perf.empirical.means, .(platform, model), mutate,
+                              normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
 ### End of Step 3.
 ### ------------------------------------------------------------
+
 ### ------------------------------------------------------------
 ### Step 4: Create plots, figures, and tables
-### End of Step 2.
+g <- ggplot(subset(perf.empirical.means, platform!='jags'),
+            aes(delta.target, normalized.samples.per.time, color=model)) +
+    geom_point() + geom_line()
+ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
+
+write.csv(file='results/table.perf.csv', dcast(subset(perf.empirical.means, platform=='jags' | delta.target==.8),
+      formula=model~platform, value.var='mean.samples.per.time'))
+### End of Step 4.
 ### ------------------------------------------------------------
 
 

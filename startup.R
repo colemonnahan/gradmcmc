@@ -115,7 +115,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
         fit.stan.nuts <-
           stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
-               init=inits, seed=seed,
+               init=inits, seed=seed, par=params.jags,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta, metric=imetric))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
@@ -153,7 +153,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
             fit.stan.hmc <-
               stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
                    warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits,
-                   control=list(adapt_engaged=TRUE,
+                   control=list(adapt_engaged=TRUE, par=params.jags,
                      adapt_delta=idelta, metric=imetric, int_time=ilambda))
             sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
             adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
