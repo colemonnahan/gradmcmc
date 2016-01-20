@@ -12,7 +12,7 @@ params.jags <- 'mu'
 ## Get independent samples from each model to make sure they are coded the
 ## same
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec,
+              lambda=lambda.vec, delta=delta.vec, metric=metric,
               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
               verify=TRUE)
 

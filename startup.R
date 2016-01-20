@@ -9,7 +9,6 @@ library(rstan)
 library(R2jags)
 library(snowfall)
 library(reshape2)
-main.dir <- 'C:/Users/Cole/gradmcmc/'
 ggwidth <- 8
 ggheight <- 5
 
