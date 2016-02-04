@@ -20,20 +20,25 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
-### Step 1: Loop through each model and fit empirical and simulated data
+### Step 1
+
+## Run multivariate normal, empirical and simulated
 m <- 'mvn'
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
 Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
 
+## Run growth tests, cross between centered/noncentered and normal/t
+## distributions
 m <- 'growth'
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
+Nout <- 10000; Nthin <- 1; Nthin.ind <- 500
 Npar.vec <- c(5,10,50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
-
-m <- 'growth2'
-Nout <- 5000; Nthin <- 1; Nthin.ind <- 50
-Npar.vec <- c(5,10,50, 100, 200, 500, 1000)[1:3]
+m <- 'growth_t'
+source(paste0('models/',m,'/run_model.R'))
+m <- 'growth_nct'
+source(paste0('models/',m,'/run_model.R'))
+m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 

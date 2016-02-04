@@ -13,20 +13,26 @@ parameters {
   real<lower=0.01, upper=.5> logk_sigma;
   // fixed effects
   real<lower=0, upper=.5> sigma_obs; // data on log scale
-  // random effects, needed to boudn these since they were going crazy during tuning
-  real<lower=2, upper=5> logLinf[Nfish];
-  real<lower=-5,upper=-1> logk[Nfish];
+  // random effects, standard normal and then trasnformed below
+  vector<lower=-5, upper=5>[Nfish] logLinf_raw;
+  vector<lower=-5, upper=5>[Nfish] logk_raw;
 }
 
+transformed parameters{
+ vector[Nfish] logLinf;
+ vector[Nfish] logk;
+ // non-centering: implies logLinf approximately N(logLinf_mean, logLinf_sigma)
+ logLinf  <- logLinf_mean+logLinf_sigma*logLinf_raw;
+ logk <- logk_mean+logk_sigma*logk_raw;
+ }
 model {
-
  // Loop through random effects and do hyperpriors
  real Linf;
  real k;
  real ypred[Nobs];
  // hyperparams
- logLinf~student_t(100, logLinf_mean, logLinf_sigma);
- logk~student_t(100,logk_mean, logk_sigma);
+ logLinf_raw~student_t(100, 0,1);
+ logk_raw~student_t(100, 0,1);
 
  // calculate likelihood of data
  for(i in 1:Nobs){

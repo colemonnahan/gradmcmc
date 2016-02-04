@@ -20,7 +20,7 @@ sample.lengths <- function(Nfish, n.ages){
     Linf.vec <- exp(logLinf.mean + rnorm(n=Nfish, 0, sd=logLinf.sigma))
     k.vec <- exp(logk.mean +rnorm(n=Nfish, mean=0, sd=logk.sigma))
     dat <- ldply(1:Nfish, function(i) cbind(fish=i, sample.vbgf(ages=sample.ages(n.ages), Linf=Linf.vec[i], k=k.vec[i])))
-    ## saveRDS(dat, paste0('growth_t_data_',Nfish,'.RDS'))
+    ## saveRDS(dat, paste0('growth_data_',Nfish,'.RDS'))
     dat
 }
 ## set.seed(5)
@@ -28,14 +28,14 @@ sample.lengths <- function(Nfish, n.ages){
 ## dat.plot <- sample.lengths(Nfish=50, n.ages=5)
 ## g <- ggplot(dat.plot, aes(ages, lengths, group=fish)) +
 ##     geom_point(alpha=.5)
-## ggsave('plots/simulated_growth_t.png', g, width=9, height=5)
+## ggsave('plots/simulated_growth.png', g, width=9, height=5)
 ## plot(ddply(dat.plot, .(ages), summarize, CV=sd(lengths)/mean(lengths)))
 ## sigma.obs <- .08
 ## set.seed(5)
 ## dat.plot <- sample.lengths(Nfish=50, n.ages=5)
 ## g <- ggplot(dat.plot, aes(ages, lengths, group=fish))+
 ##     geom_point(alpha=.5)
-## ggsave('plots/observed_growth_t.png', g, width=9, height=5)
+## ggsave('plots/observed_growth.png', g, width=9, height=5)
 dat <- sample.lengths(Nfish=Nfish, n.ages=5)
 data <- list(Nfish=Nfish, Nobs=nrow(dat), loglengths=dat$loglengths,
                   fish=dat$fish, ages=dat$ages)
@@ -61,8 +61,8 @@ model.jags <- function(){
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Nfish){
-        logLinf[i]~dt(logLinf_mean, pow(logLinf_sigma, -2), 100)
-        logk[i]~dt(logk_mean, pow(logk_sigma, -2), 100)
+        logLinf[i]~dnorm(logLinf_mean, pow(logLinf_sigma, -2))
+        logk[i]~dnorm(logk_mean, pow(logk_sigma, -2))
     }
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
@@ -72,11 +72,11 @@ model.jags <- function(){
         ## ypred[i] <- logLinf[fish[i]]+
         ##     log( (1-exp(-exp(logk[fish[i]])*ages[i])))
         ## Likelihood of data
-        loglengths[i]~dt(log(ypred[i]), pow(sigma_obs, -2), 100)
+        loglengths[i]~dnorm(log(ypred[i]), pow(sigma_obs, -2))
     }
 }
-## temp <- jags(data=data.jags, inits=list(init), param=params.jags, model.file=model.jags,
-##      n.chains=1, n.burnin=1000, n.iter=5000, n.thin=1)
+temp <- jags(data=data, inits=inits, param=params.jags, model.file='growth.jags',
+     n.chains=1, n.burnin=1000, n.iter=5000, n.thin=1)
 ## End of JAGS
 ### ------------------------------------------------------------
 
@@ -86,15 +86,15 @@ data.stan <- data
 ## Run a dummy chain to get the compilation out of the way for more
 ## sensible speed comparisons
 inits.stan <- list(init)
-model.stan <- stan(file='growth_t.stan', data=data.stan, iter=50, chains=1,
-                   warmup=10, thin=1, init=inits.stan)
+model.stan <- stan(file='growth.stan', data=data, iter=50, chains=1,
+                   warmup=10, thin=1, init=inits)
 ## temp <- stan(fit=model.stan, data=data.stan, iter=5000, chains=1,
 ##                    warmup=1000, thin=1, init=inits.stan)
 rm(dat, data, init,  logk.mean, logk.sigma, logLinf.mean, logLinf.sigma,
    sample.ages, sample.lengths, sample.vbgf, sigma.obs, t0)
 ## End of Stan
 ### ------------------------------------------------------------
-message("Finished loading growth_t models")
+message("Finished loading growth models")
 
 
 ### ------------------------------------------------------------
@@ -152,8 +152,8 @@ message("Finished loading growth_t models")
 ## sfExport("data.tmb", "inits.tmb.est", "n.thin.ind", "n.iter.ind",
 ##          "n.burnin.ind")
 ## temp <- sfLapply(1:n.chains.ind, function(i){
-##   dyn.load(TMB::dynlib('growth_t'))
-##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='growth_t')
+##   dyn.load(TMB::dynlib('growth'))
+##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb.est, DLL='growth')
 ##   set.seed(i)
 ##   x <- TMB::mcmc(obj=model.tmb, nsim=n.iter.ind, eps=NULL, max_doubling=6,
 ##             Madapt=n.burnin.ind, delta=.65, algorithm='NUTS', diag=FALSE)
@@ -196,23 +196,23 @@ message("Finished loading growth_t models")
 ## params <- data.frame(expand.grid(delta=delta.vec, covar=c(TRUE, FALSE), seed=seeds.vec))
 ## sfExport("params", "Madapt", "nsim", "covar.tmb", "run_nuts", "data.tmb",
 ##          "inits.tmb", "run_hmc")
-## growth_t.nuts.perf.list <- sfLapply(1:nrow(params), function(i){
-##   dyn.load(TMB::dynlib("growth_t"))
-##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth_t')
+## growth.nuts.perf.list <- sfLapply(1:nrow(params), function(i){
+##   dyn.load(TMB::dynlib("growth"))
+##   model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth')
 ##    covar.temp <- if(params$covar[i]) covar.tmb else NULL
 ##    run_nuts(obj=model.tmb, nsim=nsim, seed=params$seed[i],
 ##             covar=covar.temp, Madapt=Madapt, delta=params$delta[i])
 ## })
-## growth_t.nuts.perf <- do.call(rbind, growth_t.nuts.perf.list)
-## saveRDS(growth_t.nuts.perf, results.file('growth_t.nuts.perf.RDS'))
-## growth_t.nuts.perf$acceptance <- NULL
-## growth_t.nuts.perf.long <-
-##     reshape2::melt(growth_t.nuts.perf, c('covar', 'tuning', 'algorithm', 'seed'))
-## ggplot(growth_t.nuts.perf.long, aes(tuning, value, group=covar, color=covar)) +
+## growth.nuts.perf <- do.call(rbind, growth.nuts.perf.list)
+## saveRDS(growth.nuts.perf, results.file('growth.nuts.perf.RDS'))
+## growth.nuts.perf$acceptance <- NULL
+## growth.nuts.perf.long <-
+##     reshape2::melt(growth.nuts.perf, c('covar', 'tuning', 'algorithm', 'seed'))
+## ggplot(growth.nuts.perf.long, aes(tuning, value, group=covar, color=covar)) +
 ##     geom_line() + facet_wrap('variable', nrow=3, scales='free')
-## ggsave(plots.file('growth_t_nuts_perf.png'), width=8, height=6)
+## ggsave(plots.file('growth_nuts_perf.png'), width=8, height=6)
 ## ### Old way of using plyr, but can't get parallel to work
-## ## growth_t.nuts.perf <-
+## ## growth.nuts.perf <-
 ## ##     ldply(seeds.vec, function(seed)
 ## ##           ldply(covar.list, function(cov)
 ## ##               llply(delta.vec, function(x)
@@ -257,13 +257,13 @@ message("Finished loading growth_t models")
 ##   -6704352992288.63, 3741578389014.47, -77368078987773.8)
 ## model.tmb$fn(par)
 ## model.tmb$report()
-## message("Starting TMB models for growth_t")
+## message("Starting TMB models for growth")
 ## ## Try combinations of TMB
 ## tmb.nuts.eps <- 0.05
 ## tmb.nuts.covar.eps <- .7
 ## tmb.hmc.eps <- 0.05
 ## tmb.hmc.covar.eps <- .7
-## model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth_t')
+## model.tmb <- TMB::MakeADFun(data.tmb, parameters=inits.tmb, DLL='growth')
 ## time.tmb.nuts <-
 ##     as.vector(system.time(
 ##         tmb.nuts <-
@@ -273,7 +273,7 @@ message("Finished loading growth_t models")
 ## ## tmb.nuts <- tmb.nuts[-(1:n.burnin1),]
 ## tmb.nuts$LP <- -apply(tmb.nuts, 1, model.tmb$fn)
 ## perf.list[['tmb.nuts']] <-
-##     data.frame(model='growth_t', platform='tmb.nuts',time=time.tmb.nuts,
+##     data.frame(model='growth', platform='tmb.nuts',time=time.tmb.nuts,
 ##                minESS=min(effectiveSize(tmb.nuts)),
 ##                medianESS=median(effectiveSize(tmb.nuts)),
 ##                n=nrow(tmb.nuts))
@@ -286,7 +286,7 @@ message("Finished loading growth_t models")
 ## ## tmb.nuts.covar <- tmb.nuts.covar[-(1:n.burnin1),]
 ## tmb.nuts.covar$LP <- -apply(tmb.nuts.covar, 1, model.tmb$fn)
 ## perf.list[['tmb.nuts.covar']] <-
-##     data.frame(model='growth_t', platform='tmb.nuts.covar',time=time.tmb.nuts.covar,
+##     data.frame(model='growth', platform='tmb.nuts.covar',time=time.tmb.nuts.covar,
 ##                minESS=min(effectiveSize(tmb.nuts.covar)),
 ##                medianESS=median(effectiveSize(tmb.nuts.covar)),
 ##                n=nrow(tmb.nuts.covar))
@@ -299,7 +299,7 @@ message("Finished loading growth_t models")
 ## ## tmb.hmc1 <- tmb.hmc1[-(1:n.burnin1),]
 ## tmb.hmc1$LP <- -apply(tmb.hmc1, 1, model.tmb$fn)
 ## perf.list[['tmb.hmc1']] <-
-##     data.frame(model='growth_t', platform='tmb.hmc1',time=time.tmb.hmc1,
+##     data.frame(model='growth', platform='tmb.hmc1',time=time.tmb.hmc1,
 ##                minESS=min(effectiveSize(tmb.hmc1)),
 ##                medianESS=median(effectiveSize(tmb.hmc1)),
 ##                n=nrow(tmb.hmc1))
@@ -312,7 +312,7 @@ message("Finished loading growth_t models")
 ## ## tmb.hmc1.covar <- tmb.hmc1.covar[-(1:n.burnin1),]
 ## tmb.hmc1.covar$LP <- -apply(tmb.hmc1.covar, 1, model.tmb$fn)
 ## perf.list[['tmb.hmc1.covar']] <-
-##     data.frame(model='growth_t', platform='tmb.hmc1.covar',time=time.tmb.hmc1.covar,
+##     data.frame(model='growth', platform='tmb.hmc1.covar',time=time.tmb.hmc1.covar,
 ##                minESS=min(effectiveSize(tmb.hmc1.covar)),
 ##                medianESS=median(effectiveSize(tmb.hmc1.covar)),
 ##                n=nrow(tmb.hmc1.covar))
@@ -325,7 +325,7 @@ message("Finished loading growth_t models")
 ## ## tmb.hmc10 <- tmb.hmc10[-(1:n.burnin1),]
 ## tmb.hmc10$LP <- -apply(tmb.hmc10, 1, model.tmb$fn)
 ## perf.list[['tmb.hmc10']] <-
-##     data.frame(model='growth_t', platform='tmb.hmc10',time=time.tmb.hmc10,
+##     data.frame(model='growth', platform='tmb.hmc10',time=time.tmb.hmc10,
 ##                minESS=min(effectiveSize(tmb.hmc10)),
 ##                medianESS=median(effectiveSize(tmb.hmc10)),
 ##                n=nrow(tmb.hmc10))
@@ -339,7 +339,7 @@ message("Finished loading growth_t models")
 ## tmb.hmc10.covar$LP <- -apply(tmb.hmc10.covar, 1, model.tmb$fn)
 ## perf.tmb.hmc10.covar <- time.tmb.hmc10.covar/(100*min(effectiveSize(tmb.hmc10.covar))/nrow(tmb.hmc10.covar))
 ## perf.list[['tmb.hmc10.covar']] <-
-##     data.frame(model='growth_t', platform='tmb.hmc10.covar',time=time.tmb.hmc10.covar,
+##     data.frame(model='growth', platform='tmb.hmc10.covar',time=time.tmb.hmc10.covar,
 ##                minESS=min(effectiveSize(tmb.hmc10.covar)),
 ##                medianESS=median(effectiveSize(tmb.hmc10.covar)),
 ##                n=nrow(tmb.hmc10.covar))
@@ -352,7 +352,7 @@ message("Finished loading growth_t models")
 ## tmb.rwm.covar$LP <- -apply(tmb.rwm.covar, 1, model.tmb$fn)
 ## perf.tmb.rwm.covar <- time.tmb.rwm.covar/(100*min(effectiveSize(tmb.rwm.covar))/nrow(tmb.rwm.covar))
 ## perf.list[['tmb.rwm.covar']] <-
-##     data.frame(model='growth_t', platform='tmb.rwm.covar',time=time.tmb.rwm.covar,
+##     data.frame(model='growth', platform='tmb.rwm.covar',time=time.tmb.rwm.covar,
 ##                minESS=min(effectiveSize(tmb.rwm.covar)),
 ##                medianESS=median(effectiveSize(tmb.rwm.covar)),
 ##                n=nrow(tmb.rwm.covar))
