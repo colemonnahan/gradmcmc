@@ -370,3 +370,26 @@ sample.lengths <- function(Nfish, n.ages, logLinf.mean, logLinf.sigma,
               Linf=Linf.vec[i], k=k.vec[i], sigma.obs=sigma.obs, t0=t0)))
    return( dat)
 }
+ss_logistic.traj <- function(r, K, num.years, sd.catch, prop.caught,
+                             years.obs, sd.obs, sd.process, F, plot=TRUE){
+    catches <- trajectory <- rep(0,num.years)
+    u <- rnorm(n=num.years, mean=0, sd=sd.process)
+    trajectory[1] <- K + u[1]
+    for( yr in 2: num.years){
+        Nt <- trajectory[yr-1]
+        Ct <- catches[yr-1] <- Nt*(1-exp(-ifelse(Nt<K/10, 0, F)))
+        trajectory[yr] <- (Nt+r*Nt*(1- (Nt/K))-Ct) * exp(u[yr]-sd.process^2/2)
+        if( trajectory[yr]<=0 ) { trajectory[yr] <- NA; break}
+    }
+    ## generate lognormal samples
+    log.pop.obs <-
+        rnorm(n=length(years.obs),
+              mean=log(trajectory[years.obs]),sd=sd.obs) -sd.obs^2/2
+    if(plot){
+        plot(1:num.years, ylim=c(0,K*1.1),y= trajectory, type='l')
+        points(1:num.years, catches, type='h')
+        points(years.obs, exp(log.pop.obs), col='red')
+    }
+    return(list(N=num.years, catches=catches, u=u, logcpue=log.pop.obs))
+    ## return(trajectory)
+}

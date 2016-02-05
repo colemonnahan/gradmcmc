@@ -1,0 +1,19 @@
+model{
+ logK~dnorm(5.04, pow(0.5162,-2))
+    logr~dnorm(-1.38, pow(0.51, -2))
+    iq~dgamma(0.001, 0.001)
+    isigma2~dgamma(3.785518, 0.010223)
+    itau2~dgamma(1.708603, 0.008613854)
+    K <- exp(logK)
+    r <- exp(logr)
+    q <- 1/iq
+    sigma2 <- pow(isigma2,-1)
+    tau2 <- pow(itau2,-1)
+    B[1] <- K
+    u[1]~dnorm(0, isigma2)
+    for(i in 2:N){
+        B[i] <- max(.1, (B[i-1]+r*B[i-1]*(1-B[i-1]/K)-catches[i-1])*exp(u[i]))
+        u[i]~dnorm(0, isigma2)
+        logcpue[i]~dnorm(log(B[i]*q), itau2)
+    }
+}

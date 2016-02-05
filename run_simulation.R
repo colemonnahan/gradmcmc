@@ -41,6 +41,13 @@ source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
 
+## State space logistic
+m <- 'ss_logistic'
+source(paste0('models/',m,'/run_model.R'))
+m <- 'ss_logistic_nc'
+source(paste0('models/',m,'/run_model.R'))
+
+
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
