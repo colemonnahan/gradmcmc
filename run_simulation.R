@@ -42,6 +42,7 @@ m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
+Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
 m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
@@ -67,6 +68,22 @@ perf.empirical.means <-
           mean.samples.per.time=mean(samples.per.time))
 perf.empirical.means <- ddply(perf.empirical.means, .(platform, model), mutate,
                               normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
+
+perf.simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
+    read.csv(paste0('results/',i)))
+
+perf.all <- rbind(cbind(perf.empirical, kind='empirical'),
+                  cbind(perf.simulated, kind='simulated'))
+
+perf.all.wide <-
+    dcast(subset(perf.all, platform=='jags' | delta.target==.8),
+          kind+Npar+seed+model~platform, value.var='samples.per.time')
+perf.all.wide <- within(perf.all.wide, stan.re.perf<-stan.nuts/jags)
+ggplot(perf.all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
+    geom_point() + geom_hline(yintercept=0)
+
+ggplot(perf.all.wide, aes(log(jags), log(stan.nuts), color=model, shape=kind,
+                          size=Npar)) + geom_point() + geom_abline(1)
 ### End of Step 3.
 ### ------------------------------------------------------------
 

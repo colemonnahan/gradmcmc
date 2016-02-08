@@ -8,16 +8,17 @@ cpue <- dat$CPUE
 catches <- dat$Catches
 data <- list(catches=catches, logcpue=log(cpue), N=nrow(dat))
 inits <- list(list(logr=log(.8), logK=log(279), iq=5, isigma2=100, itau2=100,
-             u=rep(0, len=nrow(dat))))
-params.jags <- c('logr', 'logK', 'isigma2', 'iq', 'itau2', 'u')
+             u_raw=rep(0, len=nrow(dat))))
+params.jags <- c('logr', 'logK', 'isigma2', 'iq', 'itau2', 'u_raw')
 r <- exp((inits[[1]]$logr))
 K <- exp((inits[[1]]$logK))
+sd.process <- sqrt(1/inits[[1]]$isigma2)
 trajectory <- rep(NA, data$N)
-trajectory[1] <- K*exp(init$u[1]-sd.process^2/2)
+trajectory[1] <- K*exp(inits[[1]]$u_raw[1]*sqrt(1/inits[[1]]$isigma2)-sd.process^2/2)
 for( yr in 2: data$N){
     Nt <- trajectory[yr-1]
     Ct <- data$catches[yr-1]
-    trajectory[yr] <- (Nt+r*Nt*(1- (Nt/K))-Ct)*exp(init$u[yr]-sd.process^2/2)
+    trajectory[yr] <- (Nt+r*Nt*(1- (Nt/K))-Ct)*exp(inits[[1]]$u[yr]-sd.process^2/2)
 }
 png('plots/initial_fits.png', width=7, height=5, res=300, units='in')
 plot(trajectory, type='l', ylim=c(0, 1.5*max(trajectory)))
@@ -28,7 +29,7 @@ dev.off()
 ## same
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              delta=delta.vec, lambda=lambda.vec)
+              delta=delta.vec, lambda=lambda.vec, metric=metric)
 
 ## ## Now loop through model sizes and run for default parameters, using JAGS
 ## ## and NUTS only.
