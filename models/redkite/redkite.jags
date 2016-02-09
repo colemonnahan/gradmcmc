@@ -1,0 +1,33 @@
+# Taken from: http://www.vogelwarte.ch/de/projekte/publikationen/bpa/code-for-running-bpa-using-jags.html
+# with some small modifications
+model {
+# Priors and constraints
+sjuv ~ dbeta(4.2, 2.8)   # Informative prior for juv. survival: Analysis A
+#sjuv ~ dunif(0, 1)      # Non-informative for juv. survival prior: Analysis B
+ssub ~ dunif(0, 1)       # Prior for subad. survival
+sad ~ dunif(0, 1)        # Prior for ad. survival
+rjuv ~ dunif(0, 1)       # Prior for juv. recovery
+rad ~ dunif(0, 1)        # Prior for ad. recovery
+# Define the multinomial likelihoods
+marr_j[1:(n_age+1)] ~ dmulti(pr_j[], rel_j)
+marr_a[1:(n_age+1)] ~ dmulti(pr_a[], rel_a)
+# Define the cell probabilities of the juvenile m-array
+# First element
+pr_j[1] <- (1-sjuv)*rjuv
+# Second element
+pr_j[2] <- sjuv*(1-ssub)*rad
+# Third and further elements
+for (t in 3:n_age){
+   pr_j[t] <- sjuv*ssub*pow(sad,(t-3))*(1-sad)*rad
+   }
+# Probability of non-recovery
+pr_j[n_age+1] <- 1-sum(pr_j[1:n_age])
+# Define the cell probabilities of the adult m-array
+# All elements
+for (t in 1:n_age){
+   pr_a[t] <- pow(sad,(t-1))*(1-sad)*rad
+   }
+# Probability of non-recovery
+pr_a[n_age+1] <- 1-sum(pr_a[1:n_age])
+}
+

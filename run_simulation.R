@@ -47,6 +47,12 @@ m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
 source(paste0('models/',m,'/run_model.R'))
+
+## Red kite example from Kery and Schaub; 8.4 w/ informative prior
+Nout <- 20000; Nthin <- 1; Nthin.ind <- 1000
+m <- 'redkite'
+source(paste0('models/',m,'/run_model.R'))
+
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
