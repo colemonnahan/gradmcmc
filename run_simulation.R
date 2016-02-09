@@ -47,8 +47,6 @@ m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
 source(paste0('models/',m,'/run_model.R'))
-
-
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
@@ -68,22 +66,23 @@ perf.empirical.means <-
           mean.samples.per.time=mean(samples.per.time))
 perf.empirical.means <- ddply(perf.empirical.means, .(platform, model), mutate,
                               normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
-
 perf.simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
     read.csv(paste0('results/',i)))
-
 perf.all <- rbind(cbind(perf.empirical, kind='empirical'),
                   cbind(perf.simulated, kind='simulated'))
-
 perf.all.wide <-
     dcast(subset(perf.all, platform=='jags' | delta.target==.8),
           kind+Npar+seed+model~platform, value.var='samples.per.time')
 perf.all.wide <- within(perf.all.wide, stan.re.perf<-stan.nuts/jags)
-ggplot(perf.all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
-    geom_point() + geom_hline(yintercept=0)
+perf.growth <-
+    subset(perf.simulated, model %in% c('growth','growth_t','growth_nc','growth_nct'))
+perf.growth$model <- as.character(perf.growth$model)
+perf.growth$centered <- 'centered'
+perf.growth$centered[perf.growth$model %in% c('growth_nc', 'growth_nct')] <- 'noncentered'
+perf.growth$normal <- 'normal'
+perf.growth$normal[perf.growth$model %in% c('growth_t', 'growth_nct')] <- 'student-t'
+perf.mvn <- subset(perf.simulated, model == 'mvn')
 
-ggplot(perf.all.wide, aes(log(jags), log(stan.nuts), color=model, shape=kind,
-                          size=Npar)) + geom_point() + geom_abline(1)
 ### End of Step 3.
 ### ------------------------------------------------------------
 
@@ -93,6 +92,20 @@ g <- ggplot(subset(perf.empirical.means, platform!='jags'),
             aes(delta.target, normalized.samples.per.time, color=model)) +
     geom_point() + geom_line()
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(perf.all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
+    geom_point() + geom_hline(yintercept=0)
+ggsave('plots/perf_by_Npar.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(perf.all.wide, aes(log(jags), log(stan.nuts), color=model, shape=kind,
+                          size=Npar)) + geom_point() + geom_abline(1)
+ggsave('plots/perf_by_Npar2.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(perf.growth, aes(log(Npar), log(samples.per.time),
+                             color=platform)) + geom_point() +
+                                 facet_grid(centered~normal)
+ggsave('plots/perf_growth_simulated.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(perf.mvn, aes(log(Npar), log(samples.per.time),
+                          color=platform)) + geom_point()
+ggsave('plots/perf_mvn_simulated.png', g, width=ggwidth,
+       height=ggheight)
 
 write.csv(file='results/table.perf.csv', dcast(subset(perf.empirical.means, platform=='jags' | delta.target==.8),
       formula=model~platform, value.var='mean.samples.per.time'))
