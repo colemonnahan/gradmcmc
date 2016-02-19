@@ -200,7 +200,6 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
 fit.empirical <- function(model, params.jags, model.jags, inits, data,
                           delta, lambda, model.stan, Nout, Nout.ind, metric,
                           Nthin=1, Nthin.ind, verify=TRUE){
-
     ## First get independent samples to verify the models are the same
     message('Starting independent sampling')
     if(verify) verify.models(model=model, params.jag=params.jags, inits=inits, data=data,

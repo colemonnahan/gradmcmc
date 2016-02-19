@@ -53,6 +53,12 @@ Nout <- 20000; Nthin <- 1; Nthin.ind <- 1000
 m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
 
+## Swiss tit example from Kery and Schaub; 4 full model w/ informative
+## prior
+Nout <- 2000; Nthin <- 1; Nthin.ind <- 10
+m <- 'tits'
+source(paste0('models/',m,'/run_model.R'))
+
 ### End of Step 1.
 ### ------------------------------------------------------------
 ### ------------------------------------------------------------
