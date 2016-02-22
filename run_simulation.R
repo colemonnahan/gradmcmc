@@ -28,15 +28,10 @@ Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
 Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
 
-## Run growth tests, cross between centered/noncentered and normal/t
-## distributions
-m <- 'growth'
+## Run growth tests, cross between centered/noncentered
 Nout <- 10000; Nthin <- 1; Nthin.ind <- 500
 Npar.vec <- c(5,10,50, 100, 200, 500, 1000)
-source(paste0('models/',m,'/run_model.R'))
-m <- 'growth_t'
-source(paste0('models/',m,'/run_model.R'))
-m <- 'growth_nct'
+m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))

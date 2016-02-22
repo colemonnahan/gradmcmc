@@ -9,8 +9,12 @@ model{
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Nfish){
-        logLinf[i]~dnorm(logLinf_mean, pow(logLinf_sigma, -2))
-        logk[i]~dnorm(logk_mean, pow(logk_sigma, -2))
+	## non-centered random effects
+        logLinf_raw[i]~dnorm(0, 1)
+        logk_raw[i]~dnorm(0,1)
+	## convert to loglinf~N(logLinf_mean, logLinf_sigma), etc.
+	logLinf[i]  <-  logLinf_mean+logLinf_sigma*logLinf_raw[i]
+	logk[i] <- logk_mean+logk_sigma*logk_raw[i]
     }
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
