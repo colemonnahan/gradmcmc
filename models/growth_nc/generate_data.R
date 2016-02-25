@@ -9,5 +9,5 @@ data <- list(Nfish=Npar, Nobs=nrow(dat), loglengths=dat$loglengths,
                   fish=dat$fish, ages=dat$ages)
 inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
-                  logLinf=rep(logLinf.mean, len=Npar),
-                  logk=rep(logk.mean, len=Npar)))
+                  logLinf_raw=rep(0, len=Npar),
+                  logk_raw=rep(0, len=Npar)))
