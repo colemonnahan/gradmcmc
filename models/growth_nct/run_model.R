@@ -23,11 +23,11 @@ data <- list(Nfish=Nfish, Nobs=nrow(dat), loglengths=dat$loglengths,
                   fish=dat$fish, ages=dat$ages)
 inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
-                  logLinf=rep(logLinf.mean, len=Nfish),
-                  logk=rep(logk.mean, len=Nfish)))
+                  logLinf_raw=rep(0, len=Nfish),
+                  logk_raw=rep(0, len=Nfish)))
 params.jags <-
     c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma",
-      "sigma_obs", "logk", "logLinf")
+      "sigma_obs", "logk_raw", "logLinf_raw")
 
 
 ## Get independent samples from each model to make sure they are coded the

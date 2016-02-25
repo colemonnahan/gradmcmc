@@ -35,6 +35,10 @@ m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
+m <- 'growth_t'
+source(paste0('models/',m,'/run_model.R'))
+m <- 'growth_nct'
+source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 500

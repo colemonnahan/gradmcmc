@@ -21,7 +21,7 @@ parameters {
 transformed parameters{
  vector[Nfish] logLinf;
  vector[Nfish] logk;
- // non-centering: implies logLinf approximately N(logLinf_mean, logLinf_sigma)
+ // Matt trick: implies logLinf~N(logLinf_mean, logLinf_sigma); etc.
  logLinf  <- logLinf_mean+logLinf_sigma*logLinf_raw;
  logk <- logk_mean+logk_sigma*logk_raw;
  }
@@ -31,8 +31,8 @@ model {
  real k;
  real ypred[Nobs];
  // hyperparams
- logLinf_raw~student_t(100, 0,1);
- logk_raw~student_t(100, 0,1);
+ logLinf_raw~student_t(100,0,1);
+ logk_raw~student_t(100,0,1);
 
  // calculate likelihood of data
  for(i in 1:Nobs){
