@@ -1,0 +1,4 @@
+Fixes to the Stan model:
+
+vectorize the prior declarations
+drop uniform priors on sigma params in favor of hard constraints

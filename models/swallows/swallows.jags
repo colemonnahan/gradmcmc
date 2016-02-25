@@ -1,0 +1,49 @@
+model {
+
+  ## priors
+  for(i in 1:4) {
+    b0[i]~dnorm(0,1/100);
+    b1[i]~dnorm(0,1/100);
+  }
+  for(v in 1:(K-1)) {a[v]~dnorm(0, 1/100);}
+  a1~dnorm(0,10);
+  sigmaphi~dunif(0,5);
+  sigmayearphi~dunif(0,3);
+  sigmap~dunif(0,5);
+  ## random effects
+  for(g in 1:nfam){
+    fameffphi[g]~dnorm(0,1);
+    fameffp[g]~dnorm(0,1);
+  }
+  for(ye in 1:4){
+    yeareffphi[ye]~dnorm(0,1);
+  }
+
+  ## construct capture and survival probabilities
+  for(ii in 1:I){
+    for(tt in 1:(K-1)){
+      logit(phi[ii,tt]) <- a[tt] + a1*carez[ii]+
+			 sigmayearphi*yeareffphi[year[ii]]+
+			 sigmaphi*fameffphi[family[ii]];
+    }
+  }
+  for(i in 1:I){
+    p[i,1] <- 1;
+    for(kk in 2:K){
+      logit(p[i,kk]) <- b0[year[i]] +
+		      b1[year[i]]*agec[kk]+
+		      sigmap*fameffp[family[i]];
+    }
+  }
+
+  ## calculate likelihood
+  for(i in 1:I){
+  ## Initial period
+  Z[i,1]~dbern(phi[i,1])
+  CH[i,1]~dbern(1)
+    for(k in 2:(K-1)){
+	Z[i,k] ~dbern(Z[i,k-1]*phi[i,k])
+	CH[i,k]~dbern(p[i,k]*Z[i,k]);
+    }
+  }
+}
