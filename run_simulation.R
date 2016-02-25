@@ -49,9 +49,14 @@ m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Swiss tit example from Kery and Schaub; 4 full model w/ informative
-## prior
+## prior. BROKEN BECAUSE THE DATA INPUTS ARE DIFFERENT DUE TO MISSING VALUES
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 10
 m <- 'tits'
+source(paste0('models/',m,'/run_model.R'))
+
+## Example 14.5 from Korner-Nievergelt et al
+Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
+m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
 ### End of Step 1.
