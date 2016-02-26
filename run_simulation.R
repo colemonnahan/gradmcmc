@@ -59,7 +59,7 @@ m <- 'tits'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Example 14.5 from Korner-Nievergelt et al
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 50
+Nout <- 5000; Nthin <- 1; Nthin.ind <- 1
 m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
