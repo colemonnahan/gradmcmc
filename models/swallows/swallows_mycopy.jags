@@ -2,13 +2,11 @@ model {
 
   ## priors
   for(i in 1:4) {
-    b0[i]~dnorm(0,0.1);
-    b1[i]~dnorm(0,0.1);
+    b0[i]~dnorm(0,1/100);
+    b1[i]~dnorm(0,1/100);
   }
-  for(v in 1:(K-1)) {
-    a[v]~dnorm(0, 0.1);
-    }
-  a1~dnorm(0,0.1);
+  for(v in 1:K) {a[v]~dnorm(0, 1/100);}
+  a1~dnorm(0,10);
   sigmaphi~dunif(0,5);
   sigmayearphi~dunif(0,3);
   sigmap~dunif(0,5);
@@ -25,13 +23,12 @@ model {
   ## construct capture and survival probabilities
   ## time =1 is first capture so animal known alive and detected
   for(i in 1:I){
+	phi[i,1] <- 1
 	p[i,1] <- 1;
-    for(t in 1:(K-1)){
+    for(t in 2:K){
 		logit(phi[i,t]) <- a[t] + a1*carez[i]+
 			 sigmayearphi*yeareffphi[year[i]]+
 			 sigmaphi*fameffphi[family[i]];
-			 }
-	  for(t in 2:K){
 		logit(p[i,t]) <- b0[year[i]] +
 		      b1[year[i]]*agec[t]+
 		      sigmap*fameffp[family[i]];
@@ -42,10 +39,8 @@ model {
   for(i in 1:I){
 	Z[i,1] <- 1 ## Initial period bird is capture so alive
 		for(t in 2:K){
-		pz[i,t] <- Z[i,t-1]*phi[i,t-1]
-		Z[i,t] ~dbern(pz[i,t])
-		pch[i,t] <- p[i,t]*Z[i,t]
-		CH[i,t]~dbern(pch[i,t]);
+		Z[i,t] ~dbern(Z[i,t-1]*phi[i,t])
+		CH[i,t]~dbern(p[i,t]*Z[i,t]);
 		}
 	  }
 }
