@@ -71,17 +71,23 @@ source(paste0('models/',m,'/run_model.R'))
 ### End of Step 2.
 ### ------------------------------------------------------------
 
-
-
 ### ------------------------------------------------------------
 ### Step 3: Load and prepare data
 perf.empirical <- ldply(list.files('results', pattern='perf_empirical'), function(i)
     read.csv(paste0('results/',i)))
+## normalize by maximum run time across delta.target values
 perf.empirical.means <-
-    ddply(perf.empirical, .(platform, model, delta.target), summarize,
-          mean.samples.per.time=mean(samples.per.time))
-perf.empirical.means <- ddply(perf.empirical.means, .(platform, model), mutate,
-                              normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
+    ddply(perf.empirical, .(platform, model, delta.target), mutate,
+          median.samples.per.time=median(samples.per.time))
+perf.empirical.means <-
+    ddply(perf.empirical.means, .(platform, model), mutate,
+          normalized.samples.per.time=samples.per.time/max(median.samples.per.time))
+perf.empirical.means <-
+    ddply(perf.empirical.means, .(platform, model, delta.target), mutate,
+          med=quantile(normalized.samples.per.time, probs=c(.5)),
+          upr=quantile(normalized.samples.per.time, probs=c(.75)),
+          lwr=quantile(normalized.samples.per.time, probs=c(.25)))
+
 perf.simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
     read.csv(paste0('results/',i)))
 perf.all <- rbind(cbind(perf.empirical, kind='empirical'),
@@ -104,9 +110,15 @@ perf.mvn <- subset(perf.simulated, model == 'mvn')
 
 ### ------------------------------------------------------------
 ### Step 4: Create plots, figures, and tables
-g <- ggplot(subset(perf.empirical.means, platform!='jags'),
-            aes(delta.target, normalized.samples.per.time, color=model)) +
-    geom_point() + geom_line()
+
+m <- c('ss_logistic', 'redkite')
+g <- ggplot(subset(perf.empirical.means, platform!='jags' & model %in% m)) +
+ geom_point(aes(delta.target, normalized.samples.per.time, color=model))+
+    geom_linerange(aes(delta.target, ymax=upr, ymin=lwr, color=model)) +
+    geom_line(aes(delta.target, med, color=model))
+g
+
+
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(perf.all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
     geom_point() + geom_hline(yintercept=0)
