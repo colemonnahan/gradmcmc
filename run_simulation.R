@@ -73,37 +73,41 @@ source(paste0('models/',m,'/run_model.R'))
 
 ### ------------------------------------------------------------
 ### Step 3: Load and prepare data
-perf.empirical <- ldply(list.files('results', pattern='perf_empirical'), function(i)
+empirical <- ldply(list.files('results', pattern='perf_empirical'), function(i)
     read.csv(paste0('results/',i)))
 ## normalize by maximum run time across delta.target values
-perf.empirical.means <-
-    ddply(perf.empirical, .(platform, model, delta.target), mutate,
-          median.samples.per.time=median(samples.per.time))
-perf.empirical.means <-
-    ddply(perf.empirical.means, .(platform, model), mutate,
-          normalized.samples.per.time=samples.per.time/max(median.samples.per.time))
-perf.empirical.means <-
-    ddply(perf.empirical.means, .(platform, model, delta.target), mutate,
-          med=quantile(normalized.samples.per.time, probs=c(.5)),
-          upr=quantile(normalized.samples.per.time, probs=c(.75)),
-          lwr=quantile(normalized.samples.per.time, probs=c(.25)))
-
-perf.simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
+empirical.means <-
+    ddply(empirical, .(platform, model, delta.target), summarize,
+          mean.samples.per.time=mean(samples.per.time))
+empirical.means.normalized <-
+    ddply(empirical.means, .(platform, model), mutate,
+          normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
+## empirical.means <-
+##     ddply(empirical.means, .(platform, model, delta.target), mutate,
+##           med=quantile(normalized.samples.per.time, probs=c(.5)),
+##           upr=quantile(normalized.samples.per.time, probs=c(.75)),
+##           lwr=quantile(normalized.samples.per.time, probs=c(.25)))
+simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
     read.csv(paste0('results/',i)))
-perf.all <- rbind(cbind(perf.empirical, kind='empirical'),
-                  cbind(perf.simulated, kind='simulated'))
-perf.all.wide <-
-    dcast(subset(perf.all, platform=='jags' | delta.target==.8),
+all <- rbind(cbind(empirical, kind='empirical'), cbind(simulated, kind='simulated'))
+## Select Stan modles with default delta.target level
+all.wide <-
+    dcast(subset(all, platform=='jags' | delta.target==.8),
           kind+Npar+seed+model~platform, value.var='samples.per.time')
-perf.all.wide <- within(perf.all.wide, stan.re.perf<-stan.nuts/jags)
-perf.growth <-
-    subset(perf.simulated, model %in% c('growth','growth_t','growth_nc','growth_nct'))
-perf.growth$model <- as.character(perf.growth$model)
-perf.growth$centered <- 'centered'
-perf.growth$centered[perf.growth$model %in% c('growth_nc', 'growth_nct')] <- 'noncentered'
-perf.growth$normal <- 'normal'
-perf.growth$normal[perf.growth$model %in% c('growth_t', 'growth_nct')] <- 'student-t'
-perf.mvn <- subset(perf.simulated, model == 'mvn')
+all.wide <- within(all.wide, stan.re.perf<-stan.nuts/jags)
+growth <-
+    subset(simulated, model %in%
+               c('growth','growth_t','growth_nc','growth_nct'))
+growth$model <- as.character(growth$model)
+growth$centered <- 'centered'
+growth$centered[growth$model %in% c('growth_nc', 'growth_nct')] <- 'noncentered'
+growth$normal <- 'normal'
+growth$normal[growth$model %in% c('growth_t', 'growth_nct')] <- 'student-t'
+growth.means <- ddply(growth, .(platform, model, Npar, normal, centered), summarize,
+                      mean.samples.per.time=mean(samples.per.time))
+growth.means.wide <- dcast(subset(growth.means, Npar==15), model+Npar+centered+normal~platform, value.var='mean.samples.per.time')
+growth.means.wide$stan_re <- with(growth.means.wide, round(stan.nuts/jags, 2))
+mvn <- subset(simulated, model == 'mvn')
 
 ### End of Step 3.
 ### ------------------------------------------------------------
@@ -111,32 +115,33 @@ perf.mvn <- subset(perf.simulated, model == 'mvn')
 ### ------------------------------------------------------------
 ### Step 4: Create plots, figures, and tables
 
-m <- c('ss_logistic', 'redkite')
-g <- ggplot(subset(perf.empirical.means, platform!='jags' & model %in% m)) +
- geom_point(aes(delta.target, normalized.samples.per.time, color=model))+
-    geom_linerange(aes(delta.target, ymax=upr, ymin=lwr, color=model)) +
-    geom_line(aes(delta.target, med, color=model))
-g
-
-
+m <- c('ss_logistic', 'redkite', 'mvn', 'growth_nct')
+g <- ggplot(subset(empirical.means.normalized, platform!='jags' & model %in% m)) +
+    geom_line(aes(delta.target, normalized.samples.per.time, color=model))
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(perf.all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
+g <- ggplot(all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
     geom_point() + geom_hline(yintercept=0)
 ggsave('plots/perf_by_Npar.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(perf.all.wide, aes(log(jags), log(stan.nuts), color=model, shape=kind,
+g <- ggplot(all.wide, aes(x=log(jags), log(stan.nuts), color=model, shape=kind,
                           size=Npar)) + geom_point() + geom_abline(1)
 ggsave('plots/perf_by_Npar2.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(perf.growth, aes(log(Npar), log(samples.per.time),
-                             color=platform)) + geom_point() +
-                                 facet_grid(centered~normal)
+g <- ggplot(all, aes(log(minESS), y=log(minESS.coda), color=model))  +
+    geom_point() + facet_wrap('platform') + xlim(0,7.5) +ylim(0,7.5) +
+        geom_abline(intercept=0,slope=1)
+ggsave('plots/ESS_comparison.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(data=growth, aes(log(Npar), log(samples.per.time), color=platform)) +
+    geom_point() + facet_grid(centered~normal)
 ggsave('plots/perf_growth_simulated.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(perf.mvn, aes(log(Npar), log(samples.per.time),
+
+
+g <- ggplot(mvn, aes(log(Npar), log(samples.per.time),
                           color=platform)) + geom_point()
 ggsave('plots/perf_mvn_simulated.png', g, width=ggwidth,
        height=ggheight)
 
-write.csv(file='results/table.perf.csv', dcast(subset(perf.empirical.means, platform=='jags' | delta.target==.8),
+write.csv(file='results/table.csv', dcast(subset(empirical.means, platform=='jags' | delta.target==.8),
       formula=model~platform, value.var='mean.samples.per.time'))
+write.csv(file='results/table_growth.csv', x=growth.means.wide)
 ### End of Step 4.
 ### ------------------------------------------------------------
 
