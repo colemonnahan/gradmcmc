@@ -58,8 +58,8 @@ Nout <- 2000; Nthin <- 1; Nthin.ind <- 10
 m <- 'tits'
 source(paste0('models/',m,'/run_model.R'))
 
-## Example 14.5 from Korner-Nievergelt et al
-Nout <- 5000; Nthin <- 1; Nthin.ind <- 1
+## swallows; Example 14.5 from Korner-Nievergelt et al
+Nout <- 500; Nthin <- 1; Nthin.ind <- 100
 m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
