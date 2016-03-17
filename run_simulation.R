@@ -28,9 +28,11 @@ Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
 Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
 
+## Run MVN with varying correlations and a fixed Npar
 m <- 'mvnc'
-Nout <- 20; Nthin <- 1; Nthin.ind <- 100
-cor.vec <- seq(0,1, len=5)
+Npar <- 5
+Nout <- 10000; Nthin <- 1; Nthin.ind <- 10
+cor.vec <- seq(0,.99, len=5)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
