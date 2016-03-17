@@ -19,10 +19,11 @@ fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
 adapt.list <- perf.list <- list()
-for(i in seq_along(Npar.vec)){
-    Npar <- Npar.vec[i]
+Npar <- 5
+for(i in seq_along(cor.vec)){
+    cor.temp <- cor.vec[i]
     ## Reproducible data since seed set inside the function
-    message(paste("======== Starting Npar=", Npar))
+    message(paste("======== Starting cor=", cor.temp))
     set.seed(115)
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,

@@ -23,9 +23,14 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ### Step 1
 
 ## Run multivariate normal, empirical and simulated
-m <- 'mvn'
+m <- 'mvnd'
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
 Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
+source(paste0('models/',m,'/run_model.R'))
+
+m <- 'mvnc'
+Nout <- 20; Nthin <- 1; Nthin.ind <- 100
+cor.vec <- seq(0,1, len=5)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
