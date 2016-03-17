@@ -1,0 +1,5 @@
+"","model","Npar","centered","normal","jags","stan.nuts","stan_re"
+"1","growth",15,"centered","normal",44.0992107854758,56.9503947260203,1.29
+"2","growth_nc",15,"noncentered","normal",122.44817250463,214.213396969944,1.75
+"3","growth_nct",15,"noncentered","student-t",77.6103191121909,185.9592846551,2.4
+"4","growth_t",15,"centered","student-t",48.0400319102275,55.7074630745864,1.16
