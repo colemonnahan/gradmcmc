@@ -123,11 +123,11 @@ mvn <- subset(simulated, model == 'mvn')
 ### ------------------------------------------------------------
 ### Step 4: Create plots, figures, and tables
 
-m <- c('ss_logistic', 'redkite', 'mvn', 'growth_nct')
+m <- c('ss_logistic', 'redkite', 'growth_nct', 'swallows', 'mvnc','mnvd')
 g <- ggplot(subset(empirical.means.normalized, platform!='jags' & model %in% m)) +
     geom_line(aes(delta.target, normalized.samples.per.time, color=model))
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(all.wide, aes(Npar, log(stan.re.perf), color=model, shape=kind)) +
+g <- ggplot(all.wide, aes(log(Npar), log(stan.re.perf), color=model, shape=kind)) +
     geom_point() + geom_hline(yintercept=0)
 ggsave('plots/perf_by_Npar.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(all.wide, aes(x=log(jags), log(stan.nuts), color=model, shape=kind,
