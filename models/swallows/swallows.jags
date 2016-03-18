@@ -2,11 +2,11 @@ model {
 
     ## priors
     for(i in 1:4) {
-        b0[i]~dnorm(0,.1);
-        b1[i]~dnorm(0,.1);
+        b0[i]~dnorm(0,1/5^2);
+        b1[i]~dnorm(0,1/5^2);
     }
-    for(v in 1:(K-1)) {a[v]~dnorm(0, .1);}
-    a1~dnorm(0,.1);
+    for(v in 1:(K-1)) {a[v]~dnorm(0, 1/5^2);}
+    a1~dnorm(0,1/5^2);
     sigmaphi~dt(0,1,2)I(0,5);
     sigmayearphi~dt(0,1,2)I(0,3);
     sigmap~dt(0,1,2)I(0,5);

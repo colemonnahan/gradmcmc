@@ -9,10 +9,12 @@ params.jags <- names(inits[[1]])
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
+verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+              2*(Nthin.ind*Nout.ind), Nthin=Nthin.ind)
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
               lambda=lambda.vec, delta=delta.vec, metric=metric,
               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              verify=TRUE)
+              verify=FALSE)
 
 ## ## Now loop through model sizes and run for default parameters, using JAGS
 ## ## and NUTS only.
