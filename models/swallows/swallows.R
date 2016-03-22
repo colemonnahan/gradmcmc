@@ -23,7 +23,7 @@ str(data)
 
 ## Run both models
 .jags <- jags(data=data, model.file='swallows.jags',
-              n.chains=1, n.iter=500+500, n.burnin=500, n.thin=5,
+              n.chains=1, n.iter=5000+5000, n.burnin=5000, n.thin=5,
               parameters.to.save=params)
 .stan <- stan(file = "swallows.stan", data=data, chains=1, init=inits,
             iter=5000+5000, warmup=5000, pars=params, thin=5)
