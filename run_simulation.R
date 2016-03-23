@@ -80,29 +80,31 @@ source(paste0('models/',m,'/run_model.R'))
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
-### Step 3: Load and prepare data
+### Step 3: Load and prepare result data frames for plotting and tables
+setwd(main.dir)
 empirical <- ldply(list.files('results', pattern='perf_empirical'), function(i)
     read.csv(paste0('results/',i)))
 ## normalize by maximum run time across delta.target values
-empirical.means <-
-    ddply(empirical, .(platform, model, delta.target), summarize,
-          mean.samples.per.time=mean(samples.per.time))
-empirical.means.normalized <-
-    ddply(empirical.means, .(platform, model), mutate,
-          normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
-## empirical.means <-
-##     ddply(empirical.means, .(platform, model, delta.target), mutate,
-##           med=quantile(normalized.samples.per.time, probs=c(.5)),
-##           upr=quantile(normalized.samples.per.time, probs=c(.75)),
-##           lwr=quantile(normalized.samples.per.time, probs=c(.25)))
+empirical <-
+    ddply(empirical, .(platform, model, delta.target), mutate,
+          mean.efficiency=mean(samples.per.time),
+          sd.efficiency=sd(samples.per.time),
+          median.efficiency=quantile(samples.per.time, probs=.5),
+          lwr.efficiency=min(samples.per.time),
+          upr.efficiency=max(samples.per.time))
+## empirical.means.normalized <-
+##     ddply(empirical.means, .(platform, model), mutate,
+##           normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
 simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
     read.csv(paste0('results/',i)))
-all <- rbind(cbind(empirical, kind='empirical'), cbind(simulated, kind='simulated'))
+simulated <-
+    ddply(simulated, .(platform, model, delta.target, Npar), mutate,
+          mean.efficiency=mean(samples.per.time),
+          sd.efficiency=sd(samples.per.time),
+          median.efficiency=quantile(samples.per.time, probs=.5),
+          lwr.efficiency=min(samples.per.time),
+          upr.efficiency=max(samples.per.time))
 ## Select Stan modles with default delta.target level
-all.wide <-
-    dcast(subset(all, platform=='jags' | delta.target==.8),
-          kind+Npar+seed+model~platform, value.var='samples.per.time')
-all.wide <- within(all.wide, stan.re.perf<-stan.nuts/jags)
 growth <-
     subset(simulated, model %in%
                c('growth','growth_t','growth_nc','growth_nct'))
@@ -116,7 +118,9 @@ growth.means <- ddply(growth, .(platform, model, Npar, normal, centered), summar
 growth.means.wide <- dcast(subset(growth.means, Npar==15), model+Npar+centered+normal~platform, value.var='mean.samples.per.time')
 growth.means.wide$stan_re <- with(growth.means.wide, round(stan.nuts/jags, 2))
 mvn <- subset(simulated, model == 'mvn')
-
+## Write them to file
+write.csv(empirical, file='results/empirical.csv')
+write.csv(simulated, file='results/simulated.csv')
 ### End of Step 3.
 ### ------------------------------------------------------------
 
