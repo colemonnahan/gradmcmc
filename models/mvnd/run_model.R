@@ -19,6 +19,8 @@ fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
 adapt.list <- perf.list <- list()
+k <- 1
+for(j in cor.vec){
 for(i in seq_along(Npar.vec)){
     Npar <- Npar.vec[i]
     ## Reproducible data since seed set inside the function
@@ -27,8 +29,8 @@ for(i in seq_along(Npar.vec)){
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
                    seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
-    adapt.list[[i]] <- temp$adapt
-    perf.list[[i]] <- temp$perf
+    adapt.list[[k]] <- cbind(temp$adapt, cor=j)
+    perf.list[[k]] <- cbind(temp$perf, cor=j)
     ## Save them as we go in case it fails
     perf <- do.call(rbind, perf.list)
     adapt <- do.call(rbind, adapt.list)
@@ -36,6 +38,8 @@ for(i in seq_along(Npar.vec)){
     write.csv(x=perf, file=results.file(paste0(m,'_perf_simulated.csv')))
     write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
     rm(temp)
+    k <- k+1
+}
 }
 message(paste('Finished with model:', m))
 setwd('../..')

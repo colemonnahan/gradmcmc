@@ -25,6 +25,7 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ## Run multivariate normal, empirical and simulated
 m <- 'mvnd'
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
+cor.vec <- c(0,1)
 Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
 source(paste0('models/',m,'/run_model.R'))
 
