@@ -24,9 +24,9 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 
 ## Run multivariate normal, empirical and simulated
 m <- 'mvnd'
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 1000; Nthin <- 1; Nthin.ind <- 100
 cor.vec <- c(0,1)
-Npar.vec <- c(5, 10, 50, 100, 200, 500, 1000)
+Npar.vec <- c(5, 10, 50)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run MVN with varying correlations and a fixed Npar
@@ -100,7 +100,7 @@ empirical <-
 simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
     read.csv(paste0('results/',i)))
 simulated <-
-    ddply(simulated, .(platform, model, delta.target, Npar), mutate,
+    ddply(simulated, .(platform, model, delta.target, Npar, cor), mutate,
           mean.efficiency=mean(samples.per.time),
           sd.efficiency=sd(samples.per.time),
           median.efficiency=quantile(samples.per.time, probs=.5),
