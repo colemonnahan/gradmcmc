@@ -14,7 +14,7 @@ params.jags <- 'mu'
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
               lambda=lambda.vec, delta=delta.vec, metric=metric,
               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              verify=TRUE)
+              verify=FALSE)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
