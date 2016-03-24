@@ -9,12 +9,12 @@ data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
 inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
 params.jags <- 'mu'
 
-## Get independent samples from each model to make sure they are coded the
-## same
-fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric,
-              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              verify=FALSE)
+## ## Get independent samples from each model to make sure they are coded the
+## ## same
+## fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
+##               lambda=lambda.vec, delta=delta.vec, metric=metric,
+##               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
+##               verify=TRUE)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
