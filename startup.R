@@ -89,7 +89,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     message(paste('==== Starting seed',seed, 'at', Sys.time()))
     set.seed(seed)
     ## Precompile JAGS model so not in timings
-    message('Starting JAGS model')
+   ## message('Starting JAGS model')
     temp <- jags(data=data, parameters.to.save=params.jags, inits=inits,
          model.file=model.jags, n.chains=1, DIC=FALSE,
          n.iter=100, n.burnin=50, n.thin=1)
@@ -109,7 +109,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     rm(sims.jags, perf.jags)
     ## Use adaptation for eps and diagonal covariances, but remove those
     ## samples and time it took
-    message('Starting stan.nuts models')
+    ## message('Starting stan.nuts models')
     for(idelta in delta){
       for(imetric in metric){
         fit.stan.nuts <-
