@@ -20,11 +20,11 @@ params.jags <- 'mu'
 adapt.list <- perf.list <- list()
 k <- 1
 for(i in seq_along(Npar.vec)){
-for(j in seq_along(cor.vec)){
+  or(j in seq_along(cor.vec)){
     cor.temp <- cor.vec[j]
     Npar <- Npar.vec[i]
     ## Reproducible data since seed set inside the function
-    message(paste("======== Starting cor=", cor.temp))
+    message(paste("============ Starting Npar=", Npar.temp))
     set.seed(115)
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,

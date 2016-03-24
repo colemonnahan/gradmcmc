@@ -21,6 +21,7 @@ params.jags <- 'mu'
 adapt.list <- perf.list <- list()
 k <- 1
 for(j in cor.vec){
+    message(paste("======== Starting cor=", cor))
 for(i in seq_along(Npar.vec)){
     Npar <- Npar.vec[i]
     ## Reproducible data since seed set inside the function
