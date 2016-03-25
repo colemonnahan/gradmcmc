@@ -295,9 +295,12 @@ plot.empirical.results <- function(perf, adapt){
 #' a Stan run, using extract(fit.stan).
 #' @param sims.jags A data frame of MCMC samples from a single chain of a
 #' JAGS run.
+#' @param perf.platforms A wide data frame with platform, variable and
+#' values for Rhat and n_eff, one for each variable of a chain for each
+#' platform. As created by verify.model.
 #' @return ggplot object invisibly. Also makes plot in folder 'plots' in
 #' current working directory.
-plot.model.comparisons <- function(sims.stan, sims.jags){
+plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
     ## Clean up names so they match exactly
     names(sims.stan) <- gsub('\\.', '', x=names(sims.stan))
     names(sims.jags) <- gsub('\\.', '', x=names(sims.jags))
@@ -313,7 +316,13 @@ plot.model.comparisons <- function(sims.stan, sims.jags){
         geom_abline(slope=1, col='red') + facet_wrap('i', scales='free') +
             xlab('jags')+ ylab('stan') +
                 theme(axis.text.x=element_blank(), axis.text.y=element_blank())
-    ggsave('plots/model_comparison.png', width=9, height=5)
+    ggsave('plots/model_comparison_qqplot.png', width=9, height=5)
+    if(!is.null(perf.platforms)){
+        g <- ggplot(perf.platforms, aes(platform, value)) +
+            facet_wrap('variable', scales='free')
+        g <- g + if(nrow(perf.platforms)>50) geom_violin() else geom_point()
+        ggsave('plots/model_comparison_convergence.png', g, width=9, height=5)
+    }
     return(invisible(g))
 }
 #' Run models with thinning to get independent samples which are then used
@@ -327,14 +336,17 @@ verify.models <- function(model, params.jags, inits, data, Niter, Nthin){
   fit.jags <- jags(data=data, inits=inits, param=params.jags,
                    model.file=model.jags, n.chains=1, n.burnin=Nwarmup, n.iter=Niter,
                    n.thin=Nthin)
-  sims.jags <- data.frame(fit.jags$BUGSoutput$sims.matrix)
+  sims.jags <- fit.jags$BUGSoutput$sims.array
+  perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
   fit.stan <- stan(file=model.stan, data=data, iter=Niter, chains=1,
                    warmup=Nwarmup, thin=Nthin, init=inits)
-  sims.stan <- data.frame(extract(fit.stan, permuted=FALSE)[,1,])
-  jags.ess <- data.frame(monitor(sims=fit.jags$BUGSoutput$sims.array, warmup=0, print=FALSE, probs=.5))$n_eff
-  stan.ess <- data.frame(monitor(sims=extract(fit.stan, permuted=FALSE), warmup=0, print=FALSE, probs=.5))$n_eff
-  plot.model.comparisons(sims.stan, sims.jags)
-  print(rbind(jags.ess, stan.ess))
+  sims.stan <- extract(fit.stan, permuted=FALSE)
+  perf.stan <- data.frame(rstan::monitor(sims=sims.stan, warmup=0, print=FALSE, probs=.5))
+  perf.platforms <- rbind(cbind(platform='jags',perf.jags),
+                          cbind(platform='stan',perf.stan))
+  perf.platforms <- melt(perf.platforms, c('Rhat', 'n_eff'), id.vars='platform')
+  plot.model.comparisons(as.data.frame(sims.stan[,1,]),
+                         as.data.frame(sims.jags[,1,]), perf.platforms)
 }
 make.trace <- function(df.thinned, model, string){
     nrows <- ceiling(sqrt(ncol(df.thinned)))
