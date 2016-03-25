@@ -53,8 +53,7 @@ cum.minESS <- function(df, breaks=5){
 #' @param Nthin The number to thin, defaults to 1.
 #' @param lambda A vector of integrated time for HMC (eps times L)
 #' @param delta A vector of target acceptance rates. Defaults to 0.8.
-#' @param n.thin The thinning rate.
-#' @param sink Whether to sink console output to trash file to cleanup
+#' @param sink.console Whether to sink console output to trash file to cleanup
 #' console output. Defaults to TRUE. Makes it easier to see the progress on
 #' the console.
 #' @param metric A vector of metrics to run across for HMC and NUTS. Must
@@ -64,6 +63,7 @@ cum.minESS <- function(df, breaks=5){
 run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                        metric='diag_e', data, inits, params.jags,
                        sink.console=TRUE){
+    message(paste('\n\n\n\n\n=====================Starting model', model))
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
   if(Nthin != 1)
@@ -100,11 +100,14 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
       as.vector(system.time(fit.jags <- update(temp, n.iter=Niter, n.thin=Nthin))[3])
     sims.jags <- fit.jags$BUGSoutput$sims.array
     perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
+    Rhat.jags <- with(perf.jags, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
     perf.list[[k]] <-
       data.frame(platform='jags', seed=seed, Npar=dim(sims.jags)[3], delta.target=.5,
                  time.warmup=time.jags.warmup, time.sampling=time.jags.sampling,
                  minESS=min(perf.jags$n_eff), medianESS=median(perf.jags$n_eff),
-                 Nsims=dim(sims.jags)[1], minESS.coda=min(coda::effectiveSize(x=sims.jags[,1,])))
+                 Nsims=dim(sims.jags)[1],
+                 minESS.coda=min(coda::effectiveSize(x=sims.jags[,1,])),
+                 Rhat.jags)
     k <- k+1
     rm(sims.jags, perf.jags)
     ## Use adaptation for eps and diagonal covariances, but remove those
@@ -119,6 +122,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta, metric=imetric))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
+        Rhat.stan.nuts <- with(perf.stan.nuts, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
         adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts))
         adapt.list[[k]] <-
           data.frame(platform='NUTS', seed=seed,
@@ -141,7 +145,8 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                      minESS=min(perf.stan.nuts$n_eff),
                      medianESS=median(perf.stan.nuts$n_eff),
                      Nsims=dim(sims.stan.nuts)[1],
-                     minESS.coda=min(effectiveSize(as.data.frame(sims.stan.nuts[,1,]))))
+                     minESS.coda=min(effectiveSize(as.data.frame(sims.stan.nuts[,1,]))),
+                     Rhat.stan.nuts)
         k <- k+1
       }}
     rm(fit.stan.nuts, sims.stan.nuts, perf.stan.nuts, adapt.nuts)
@@ -153,9 +158,11 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
             fit.stan.hmc <-
               stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
                    warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits,
-                   control=list(adapt_engaged=TRUE, par=params.jags,
+                   par=params.jags, control=list(adapt_engaged=TRUE,
                      adapt_delta=idelta, metric=imetric, int_time=ilambda))
             sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
+            perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
+            Rhat.stan.hmc <- with(perf.stan.hmc, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
             adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
             adapt.list[[k]] <-
               data.frame(platform=paste0('HMC',ilambda), seed=seed,
@@ -167,7 +174,6 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                          metric=imetric, lambda=ilambda,
                          L=tail(adapt.hmc$stepsize__,1)*ilambda,
                          nsteps.mean=tail(adapt.hmc$stepsize__,1)*ilambda)
-            perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
             perf.list[[k]] <-
               data.frame(platform=paste0('stan.hmc',ilambda),
                          seed=seed, delta.target=idelta, metric=imetric,
@@ -177,7 +183,8 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                          minESS=min(perf.stan.hmc$n_eff),
                          medianESS=median(perf.stan.hmc$n_eff),
                          Nsims=dim(sims.stan.hmc)[1],
-                         minESS.coda=min(effectiveSize(as.data.frame(sims.stan.hmc[,1,]))))
+                         minESS.coda=min(effectiveSize(as.data.frame(sims.stan.hmc[,1,]))),
+                         Rhat.stan.hmc)
             k <- k+1
             rm(fit.stan.hmc, sims.stan.hmc, perf.stan.hmc, adapt.hmc)
           }
