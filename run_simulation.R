@@ -33,7 +33,7 @@ source(paste0('models/',m,'/run_model.R'))
 m <- 'mvnc'
 Npar <- 5
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 10
-cor.vec <- seq(0,.99, len=5)
+cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999, .9999)
 Npar.vec <- c(2, 5, 20)
 source(paste0('models/',m,'/run_model.R'))
 
