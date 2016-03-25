@@ -9,27 +9,41 @@ data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
 inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
 params.jags <- 'mu'
 
-## ## Get independent samples from each model to make sure they are coded the
-## ## same
-## fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-##               lambda=lambda.vec, delta=delta.vec, metric=metric,
-##               Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-##               verify=TRUE)
+## Get independent samples from each model to make sure they are coded the
+## same
+message(paste('\n\n\n\n\n=====================Starting model:', model))
+if(verify){
+  message('Starting independent sampling')
+  verify.models(model=m, params.jag=params.jags, inits=inits, data=data,
+                Niter=2*(Nthin.ind*Nout.ind), Nthin=Nthin.ind)
+}
+
+## Use independent draws from the verify.model output to use for initial
+## values. Each model has a different way to format the inits data.
+sims.ind <- readRDS(file='sims.ind.RDS')
+sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
+inits <- lapply(1:length(seeds), function(i) list(mu=as.numeric(sims.ind[i,])))
+inits[[1]][[1]][1] <- -9
+## Fit empirical data with no thinning for efficiency tests
+
+fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
+              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              Nout=Nout)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
 adapt.list <- perf.list <- list()
 k <- 1
 for(j in cor.vec){
-    message(paste("======== Starting cor=", cor))
-for(i in seq_along(Npar.vec)){
+  message(paste("======== Starting cor=", cor))
+  for(i in seq_along(Npar.vec)){
     Npar <- Npar.vec[i]
     ## Reproducible data since seed set inside the function
     message(paste("======== Starting Npar=", Npar))
     set.seed(115)
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
-                   seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
+                       seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
     adapt.list[[k]] <- cbind(temp$adapt, cor=j)
     perf.list[[k]] <- cbind(temp$perf, cor=j)
     ## Save them as we go in case it fails
@@ -40,7 +54,7 @@ for(i in seq_along(Npar.vec)){
     write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
     rm(temp)
     k <- k+1
-}
+  }
 }
 message(paste('Finished with model:', m))
 setwd('../..')

@@ -49,6 +49,8 @@ cum.minESS <- function(df, breaks=5){
 #' @param model Character string for model name
 #' @param seeds A vector of seeds to run across (sequentially) for each
 #' algorithm.
+#' @param inits A list of lists of randomly drawn independent starting
+#' values, of the same length as seeds
 #' @param Nout The number of resulting iterations after thinning and warmup
 #' @param Nthin The number to thin, defaults to 1.
 #' @param lambda A vector of integrated time for HMC (eps times L)
@@ -63,11 +65,10 @@ cum.minESS <- function(df, breaks=5){
 run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                        metric='diag_e', data, inits, params.jags,
                        sink.console=TRUE){
-    message(paste('\n\n\n\n\n=====================Starting model', model))
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
   if(Nthin != 1)
-      stop("Nthin must be one, delta.final calculation may break otherwise")
+    stop("Nthin must be one, delta.final calculation may break otherwise")
   Niter <- Nout*Nthin
   Nwarmup <- Niter/2
   ind.samples <- (Nwarmup/Nthin+1):Nout    # index of samples, excluding warmup
@@ -82,19 +83,20 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
   ## Precompile Stan model so it isn't done repeatedly and isn't in the
   ## timings
   model.stan <- stan(file=model.stan, data=data, iter=100,
-         warmup=50, chains=1, thin=1, algorithm='NUTS',
-         init=inits, seed=1, verbose=FALSE,
-         control=list(adapt_engaged=FALSE))
+                     warmup=50, chains=1, thin=1, algorithm='NUTS',
+                     init=list(inits[[1]]), seed=1, verbose=FALSE,
+                     control=list(adapt_engaged=FALSE))
   for(seed in seeds){
     message(paste('==== Starting seed',seed, 'at', Sys.time()))
+    inits.seed <- list(inits[[which(seed==seeds)]])
     set.seed(seed)
     ## Precompile JAGS model so not in timings
-   ## message('Starting JAGS model')
-    temp <- jags(data=data, parameters.to.save=params.jags, inits=inits,
-         model.file=model.jags, n.chains=1, DIC=FALSE,
-         n.iter=100, n.burnin=50, n.thin=1)
+    ## message('Starting JAGS model')
+    temp <- jags(data=data, parameters.to.save=params.jags, inits=inits.seed,
+                 model.file=model.jags, n.chains=1, DIC=FALSE,
+                 n.iter=100, n.burnin=50, n.thin=1)
     time.jags.warmup <- as.vector(system.time(temp <-
-        update(temp, n.iter=5, n.burnin=Nwarmup, n.thin=1)))[3]
+      update(temp, n.iter=5, n.burnin=Nwarmup, n.thin=1)))[3]
     ## Rerun with those tunings to get efficiency
     time.jags.sampling <-
       as.vector(system.time(fit.jags <- update(temp, n.iter=Niter, n.thin=Nthin))[3])
@@ -118,7 +120,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
         fit.stan.nuts <-
           stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
-               init=inits, seed=seed, par=params.jags,
+               init=inits.seed, seed=seed, par=params.jags,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta, metric=imetric))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
@@ -157,9 +159,9 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
           for(imetric in metric){
             fit.stan.hmc <-
               stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
-                   warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits,
+                   warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.seed,
                    par=params.jags, control=list(adapt_engaged=TRUE,
-                     adapt_delta=idelta, metric=imetric, int_time=ilambda))
+                                      adapt_delta=idelta, metric=imetric, int_time=ilambda))
             sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
             perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
             Rhat.stan.hmc <- with(perf.stan.hmc, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
@@ -204,15 +206,9 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
 }
 
 #' Verify models and then run empirical tests across delta
-fit.empirical <- function(model, params.jags, model.jags, inits, data,
-                          delta, lambda, model.stan, Nout, Nout.ind, metric,
-                          Nthin=1, Nthin.ind, verify=TRUE){
-    ## First get independent samples to verify the models are the same
-    message('Starting independent sampling')
-    if(verify) verify.models(model=model, params.jag=params.jags, inits=inits, data=data,
-                  Niter=2*(Nthin.ind*Nout.ind), Nthin=Nthin.ind)
-
-
+fit.empirical <- function(model, params.jags, model.jags, inits, data, seeds,
+                          delta, lambda, model.stan, Nout,  metric,
+                          Nthin=1){
     ## Now rerun across gradient of acceptance rates and compare to JAGS
     message('Starting empirical runs')
     results.empirical <-
@@ -347,6 +343,10 @@ verify.models <- function(model, params.jags, inits, data, Niter, Nthin){
   perf.platforms <- melt(perf.platforms, c('Rhat', 'n_eff'), id.vars='platform')
   plot.model.comparisons(as.data.frame(sims.stan[,1,]),
                          as.data.frame(sims.jags[,1,]), perf.platforms)
+  ## Save independent samples for use in intial values later.
+  sims.ind <- data.frame(sims.stan[,1,])
+  sims.ind <- sims.ind[, names(sims.ind) != 'lp__']
+  saveRDS(sims.ind, file='sims.ind.RDS')
 }
 make.trace <- function(df.thinned, model, string){
     nrows <- ceiling(sqrt(ncol(df.thinned)))
