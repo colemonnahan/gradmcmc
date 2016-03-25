@@ -24,17 +24,19 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 
 ## Run multivariate normal, empirical and simulated
 m <- 'mvnd'
-Nout <- 1000; Nthin <- 1; Nthin.ind <- 100
+verify <- TRUE
+Nout <- 10000; Nthin <- 1; Nthin.ind <- 100
 cor.vec <- c(0,1)
-Npar.vec <- c(5, 10, 50)
+Npar.vec <- c(5, 50, 100, 200, 400, 1000)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run MVN with varying correlations and a fixed Npar
 m <- 'mvnc'
+verify <- TRUE
 Npar <- 5
-Nout <- 20000; Nthin <- 1; Nthin.ind <- 10
-cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999, .9999)
-Npar.vec <- c(2, 5, 20)
+Nout <- 500; Nthin <- 1; Nthin.ind <- 10
+cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999, .9999)[c(1,11)]
+Npar.vec <- c(2, 5)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered

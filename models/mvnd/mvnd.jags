@@ -1,4 +1,4 @@
 model{
- for(i in 1:Npar) {mu[i]~dunif(-50,50)}
+ for(i in 1:Npar) {mu[i]~dunif(-100,100)}
 x~dmnorm(mu, inverse(covar))
 }

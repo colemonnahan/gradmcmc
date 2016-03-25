@@ -8,7 +8,8 @@ if(j==0){
     stop("Invalid cor value in mvnd")
 }
 data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
-inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
+inits <- lapply(1:length(seeds), function(i)
+  list(mu=mvrnorm(n=1, mu=rep(0, len=Npar), Sigma=covar)))
 params.jags <- 'mu'
 ### old tests for how to get correlations along a gradient, for now using a
 ### two step approach (above)

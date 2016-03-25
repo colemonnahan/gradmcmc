@@ -9,6 +9,7 @@ library(rstan)
 library(R2jags)
 library(snowfall)
 library(reshape2)
+library(MASS)                           # has mvrnorm()
 ggwidth <- 8
 ggheight <- 5
 
