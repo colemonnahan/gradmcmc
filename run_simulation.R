@@ -19,6 +19,13 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ### End of Step 0.
 ### ------------------------------------------------------------
 
+verify <- FALSE
+Nout <- 200; Nthin <- 1; Nthin.ind <- 50
+Npar.vec <- c(5,10,50)
+m <- 'growth_nc2'
+source(paste0('models/',m,'/run_model.R'))
+
+
 ### ------------------------------------------------------------
 ### Step 1
 
