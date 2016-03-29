@@ -49,7 +49,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
   }
   ## Precompile Stan model so it isn't done repeatedly and isn't in the
   ## timings
-  model.stan <- stan(file=model.stan, data=data, iter=100,
+  model.stan <- stan(file=model.stan, data=data, iter=100, par=params.jags,
                      warmup=50, chains=1, thin=1, algorithm='NUTS',
                      init=list(inits[[1]]), seed=1, verbose=FALSE,
                      control=list(adapt_engaged=FALSE))
@@ -309,7 +309,7 @@ verify.models <- function(model, params.jags, inits, data, Niter, Nthin,
   sims.jags <- fit.jags$BUGSoutput$sims.array
   perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
   fit.stan <- stan(file=model.stan, data=data, iter=Niter, chains=1,
-                   warmup=Nwarmup, thin=Nthin, init=inits)
+                   warmup=Nwarmup, thin=Nthin, init=inits, pars=params.jags)
   sims.stan <- extract(fit.stan, permuted=FALSE)
   perf.stan <- data.frame(rstan::monitor(sims=sims.stan, warmup=0, print=FALSE, probs=.5))
   perf.platforms <- rbind(cbind(platform='jags',perf.jags),
