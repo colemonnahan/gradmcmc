@@ -274,7 +274,7 @@ plot.empirical.results <- function(perf, adapt){
            measure.vars=c('time.warmup', 'time.sampling', 'minESS',
              'samples.per.time'))
     perf.long$seed2 <- as.factor(with(perf.long, paste(seed, metric, sep="_")))
-    g <- ggplot(perf.long, aes(delta.target, log(value), group=seed2, color=metric))+
+    g <- ggplot(subset(perf.long, platform!='jags'), aes(delta.target, log(value), group=seed2, color=metric))+
       geom_line() + geom_point() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
     ggsave(paste0('plots/',model.name, '_perf_empirical.png'), g, width=ggwidth, height=ggheight)
     adapt.long <- melt(adapt, id.vars=c('platform', 'seed', 'delta.target', 'metric'),

@@ -16,6 +16,7 @@ parameters {
   // random effects, standard normal and then trasnformed below
   vector<lower=-5, upper=5>[Nfish] logLinf_raw;
   vector<lower=-5, upper=5>[Nfish] logk_raw;
+  real<lower=0, upper=5> delta;
 }
 
 transformed parameters{
@@ -38,7 +39,7 @@ model {
  for(i in 1:Nobs){
   Linf <- exp(logLinf[fish[i]]);
   k <- exp(logk[fish[i]]);
-  ypred[i] <- log(Linf*(1-exp(-k*(ages[i]-5))));
+  ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
  }
   loglengths~normal(ypred, sigma_obs);
 }

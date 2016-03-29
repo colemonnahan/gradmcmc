@@ -19,13 +19,6 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ### End of Step 0.
 ### ------------------------------------------------------------
 
-verify <- FALSE
-Nout <- 200; Nthin <- 1; Nthin.ind <- 50
-Npar.vec <- c(5,10,50)
-m <- 'growth_nc2'
-source(paste0('models/',m,'/run_model.R'))
-
-
 ### ------------------------------------------------------------
 ### Step 1
 
@@ -47,8 +40,8 @@ Npar.vec <- c(2, 5)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
-Nout <- 10000; Nthin <- 1; Nthin.ind <- 500
-Npar.vec <- c(5,10,50, 100, 200, 500, 1000)
+Nout <- 500; Nthin <- 1; Nthin.ind <- 5
+Npar.vec <- c(5,10,50, 100)[1:2]
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
