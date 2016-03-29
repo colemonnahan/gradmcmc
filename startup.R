@@ -2,48 +2,14 @@
 ## main.dir <- paste0(getwd(), '/')
 ## load libraries and such
 library(coda)
-library(TMB)
 library(ggplot2)
 library(plyr)
 library(rstan)
 library(R2jags)
-library(snowfall)
 library(reshape2)
 library(MASS)                           # has mvrnorm()
 ggwidth <- 8
 ggheight <- 5
-
-## Functions
-results.file <- function(file) paste0(main.dir,'results/', file)
-plots.file <- function(file) paste0(main.dir,'plots/', file)
-figures.file <- function(file) paste0(main.dir,'paper/figures/', file)
-#' @param d Dimension of matrix
-#' @param covar The covariance for off diagonals. Assumed the same for all
-#' pairs of parameters.
-#' @return A Hessian matrix (inverse of covariance matrix).
-make.covar <- function(d, covar){
-    x <- matrix(covar, nrow=d, ncol=d)
-    diag(x) <- 1
-    x
-}
-## TMB bounding functions, copied from  ADMB
-boundpinv <- function(x, min, max){
-    -log( (max-min)/(x-min) -1)
-}
-boundp <- function(x, min, max){
-    min + (max-min)/(1+exp(-x))
-}
-## Get cumulative minimum ESS as a percentage
-cum.minESS <- function(df, breaks=5){
-    x <- floor(seq(1, dim(df)[1], len=breaks))
-    x <- x[x>1]
-    y <- lapply(1:length(x), function(i){
-       df2 <- df[1:x[i],,, drop=FALSE]
-       ess <- data.frame(monitor(df2, warmup=0, print=FALSE))$n_eff
-      data.frame(iteration=x[i], pct.ess=100*min(ess)/dim(df2)[1])
- })
-    do.call(rbind, y)
-}
 
 #' Run Stan and JAGS models to compare efficiency.
 #'
