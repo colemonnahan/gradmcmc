@@ -7,7 +7,8 @@ g <- ggplot(dat, aes(ages, loglengths, group=fish, color=fish)) +
 ggsave('plots/simulated_growth.png', g, width=9, height=5)
 data <- list(Nfish=Npar, Nobs=nrow(dat), loglengths=dat$loglengths,
                   fish=dat$fish, ages=dat$ages)
-inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
+inits <- list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
                   logLinf_raw=rep(0, len=Npar),
-                  logk_raw=rep(0, len=Npar)))
+                  logk_raw=rep(0, len=Npar), delta=1)
+inits <- lapply(seq_along(seeds), function(i) inits)

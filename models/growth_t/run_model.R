@@ -24,18 +24,33 @@ data <- list(Nfish=Nfish, Nobs=nrow(dat), loglengths=dat$loglengths,
 inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
                   logLinf=rep(logLinf.mean, len=Nfish),
-                  logk=rep(logk.mean, len=Nfish)))
+                  logk=rep(logk.mean, len=Nfish), delta=1))
 params.jags <-
     c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma",
-      "sigma_obs", "logk", "logLinf")
-
+      "sigma_obs", "logk", "logLinf", "delta")
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
+verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+              Niter=Nout, Nthin=Nthin)
+
+sims.ind <- readRDS(file='sims.ind.RDS')
+sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
+inits <- lapply(1:length(seeds), function(i)
+    list(
+        logLinf_mean=sims.ind$logLinf_mean[i],
+        logLinf_sigma=sims.ind$logLinf_sigma[i],
+        logk_mean=sims.ind$logk_mean[i],
+        logk_sigma=sims.ind$logk_sigma[i],
+        sigma_obs=sims.ind$sigma_obs[i],
+        delta=sims.ind$delta[i],
+        logk=as.numeric(sims.ind[i, grep('logk\\.', x=names(sims.ind))]),
+        logLinf=as.numeric(sims.ind[i, grep('logLinf\\.', x=names(sims.ind))])))
+
+## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric,
-              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              verify=TRUE)
+              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              Nout=Nout)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
@@ -59,5 +74,6 @@ for(i in seq_along(Npar.vec)){
     rm(temp)
 }
 message(paste('Finished with model:', m))
+
 setwd('../..')
 

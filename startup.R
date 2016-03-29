@@ -209,13 +209,14 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
 #' Verify models and then run empirical tests across delta
 fit.empirical <- function(model, params.jags, model.jags, inits, data, seeds,
                           delta, lambda, model.stan, Nout,  metric,
-                          Nthin=1){
+                          Nthin=1, sink.console=TRUE){
     ## Now rerun across gradient of acceptance rates and compare to JAGS
     message('Starting empirical runs')
     results.empirical <-
       run.chains(model=model, seeds=seeds, Nout=Nout, lambda=lambda,
                  metric=metric, delta=delta, data=data,
-                 Nthin=Nthin, inits=inits, params.jags=params.jags)
+                 Nthin=Nthin, inits=inits, params.jags=params.jags,
+                 sink.console=sink.console)
     with(results.empirical, plot.empirical.results(perf, adapt))
     write.csv(file=results.file(paste0(m, '_adapt_empirical.csv')), results.empirical$adapt)
     write.csv(file=results.file(paste0(m, '_perf_empirical.csv')), results.empirical$perf)
@@ -273,7 +274,7 @@ plot.empirical.results <- function(perf, adapt){
            measure.vars=c('time.warmup', 'time.sampling', 'minESS',
              'samples.per.time'))
     perf.long$seed2 <- as.factor(with(perf.long, paste(seed, metric, sep="_")))
-    g <- ggplot(perf.long, aes(delta.target, log(value), group=seed2, color=metric))+
+    g <- ggplot(subset(perf.long, platform!='jags'), aes(delta.target, log(value), group=seed2, color=metric))+
       geom_line() + geom_point() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
     ggsave(paste0('plots/',model.name, '_perf_empirical.png'), g, width=ggwidth, height=ggheight)
     adapt.long <- melt(adapt, id.vars=c('platform', 'seed', 'delta.target', 'metric'),
@@ -326,7 +327,13 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
 #' to verify the posteriors are the same, effectively checking for bugs
 #' between models before doing performance comparisons
 #'
-verify.models <- function(model, params.jags, inits, data, Niter, Nthin){
+verify.models <- function(model, params.jags, inits, data, Niter, Nthin,
+                          sink.console=TRUE){
+  message('Starting independent runs')
+  if(sink.console){
+    sink(file='trash.txt', append=FALSE, type='output')
+    on.exit(sink())
+  }
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
   Nwarmup <- Niter/2

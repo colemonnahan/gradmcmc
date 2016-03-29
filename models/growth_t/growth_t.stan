@@ -16,6 +16,7 @@ parameters {
   // random effects, needed to boudn these since they were going crazy during tuning
   real<lower=2, upper=5> logLinf[Nfish];
   real<lower=-5,upper=-1> logk[Nfish];
+  real<lower=0, upper=5> delta;
 }
 
 model {
@@ -32,7 +33,7 @@ model {
  for(i in 1:Nobs){
   Linf <- exp(logLinf[fish[i]]);
   k <- exp(logk[fish[i]]);
-  ypred[i] <- log(Linf*(1-exp(-k*(ages[i]-5))));
+  ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
  }
   loglengths~student_t(100, ypred, sigma_obs);
 }

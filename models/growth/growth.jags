@@ -6,6 +6,7 @@ model{
     logk_sigma~dunif(0,.5)
     ## priors
     sigma_obs~dunif(0,.5)
+    delta~dunif(0,5)
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Nfish){
@@ -16,7 +17,7 @@ model{
     for(i in 1:Nobs){
         Linf[i] <- exp(logLinf[fish[i]])
         k[i] <- exp(logk[fish[i]])
-        ypred[i] <- Linf[i]*(1-exp(-k[i]*(ages[i]-5)))
+        ypred[i] <- Linf[i]*(1-exp(-k[i]*(ages[i]-5)))^delta
         ## ypred[i] <- logLinf[fish[i]]+
         ##     log( (1-exp(-exp(logk[fish[i]])*ages[i])))
         ## Likelihood of data
