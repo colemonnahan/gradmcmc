@@ -2,48 +2,15 @@
 ## main.dir <- paste0(getwd(), '/')
 ## load libraries and such
 library(coda)
-library(TMB)
 library(ggplot2)
 library(plyr)
 library(rstan)
 library(R2jags)
-library(snowfall)
 library(reshape2)
 library(MASS)                           # has mvrnorm()
 ggwidth <- 8
 ggheight <- 5
-
-## Functions
 results.file <- function(file) paste0(main.dir,'results/', file)
-plots.file <- function(file) paste0(main.dir,'plots/', file)
-figures.file <- function(file) paste0(main.dir,'paper/figures/', file)
-#' @param d Dimension of matrix
-#' @param covar The covariance for off diagonals. Assumed the same for all
-#' pairs of parameters.
-#' @return A Hessian matrix (inverse of covariance matrix).
-make.covar <- function(d, covar){
-    x <- matrix(covar, nrow=d, ncol=d)
-    diag(x) <- 1
-    x
-}
-## TMB bounding functions, copied from  ADMB
-boundpinv <- function(x, min, max){
-    -log( (max-min)/(x-min) -1)
-}
-boundp <- function(x, min, max){
-    min + (max-min)/(1+exp(-x))
-}
-## Get cumulative minimum ESS as a percentage
-cum.minESS <- function(df, breaks=5){
-    x <- floor(seq(1, dim(df)[1], len=breaks))
-    x <- x[x>1]
-    y <- lapply(1:length(x), function(i){
-       df2 <- df[1:x[i],,, drop=FALSE]
-       ess <- data.frame(monitor(df2, warmup=0, print=FALSE))$n_eff
-      data.frame(iteration=x[i], pct.ess=100*min(ess)/dim(df2)[1])
- })
-    do.call(rbind, y)
-}
 
 #' Run Stan and JAGS models to compare efficiency.
 #'
@@ -83,7 +50,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
   }
   ## Precompile Stan model so it isn't done repeatedly and isn't in the
   ## timings
-  model.stan <- stan(file=model.stan, data=data, iter=100,
+  model.stan <- stan(file=model.stan, data=data, iter=100, par=params.jags,
                      warmup=50, chains=1, thin=1, algorithm='NUTS',
                      init=list(inits[[1]]), seed=1, verbose=FALSE,
                      control=list(adapt_engaged=FALSE))
@@ -307,21 +274,36 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
     sims.jags <- sims.jags[,par.names]
     ## Massage qqplot results into long format for ggplot
     qq <- ldply(par.names, function(i){
-                    temp <- as.data.frame(qqplot(sims.jags[,i], sims.stan[,i], plot.it=FALSE))
-                    return(cbind(i,temp))
-                })
-    g <- ggplot(qq, aes(x,y))+ geom_point(alpha=.5) +
-        geom_abline(slope=1, col='red') + facet_wrap('i', scales='free') +
-            xlab('jags')+ ylab('stan') +
-                theme(axis.text.x=element_blank(), axis.text.y=element_blank())
-    ggsave('plots/model_comparison_qqplot.png', width=9, height=5)
+        temp <- as.data.frame(qqplot(sims.jags[,i], sims.stan[,i], plot.it=FALSE))
+        return(cbind(par=i,temp))
+    })
+    ## Since can be too many parameters, break them up into pages. Stolen
+    ## from
+    ## http://stackoverflow.com/questions/22996911/segment-facet-wrap-into-multi-page-pdf
+    noVars <- length(par.names)
+    noPlots <- 25
+    plotSequence <- c(seq(0, noVars-1, by = noPlots), noVars)
+    pdf('plots/model_comparison_qqplots.pdf', onefile=TRUE, width=ggwidth,
+        height=ggheight)
+    for(ii in 2:length(plotSequence)){
+        start <- plotSequence[ii-1] + 1;   end <- plotSequence[ii]
+        tmp <- subset(qq, par %in% par.names[start:end])
+        g <- ggplot(tmp, aes(x,y))+ geom_point(alpha=.5) +
+            geom_abline(slope=1, col='red') + facet_wrap('par',
+        scales='free', nrow=5) + xlab('jags')+ ylab('stan')
+           ## theme(axis.text.x=element_blank(), axis.text.y=element_blank())
+        g <- g+ theme(text=element_text(size=10))
+        print(g)
+    }
+    dev.off()
+
     if(!is.null(perf.platforms)){
         g <- ggplot(perf.platforms, aes(platform, value)) +
             facet_wrap('variable', scales='free')
         g <- g + if(nrow(perf.platforms)>50) geom_violin() else geom_point()
         ggsave('plots/model_comparison_convergence.png', g, width=9, height=5)
     }
-    return(invisible(g))
+    return(NULL)
 }
 #' Run models with thinning to get independent samples which are then used
 #' to verify the posteriors are the same, effectively checking for bugs
@@ -343,7 +325,7 @@ verify.models <- function(model, params.jags, inits, data, Niter, Nthin,
   sims.jags <- fit.jags$BUGSoutput$sims.array
   perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
   fit.stan <- stan(file=model.stan, data=data, iter=Niter, chains=1,
-                   warmup=Nwarmup, thin=Nthin, init=inits)
+                   warmup=Nwarmup, thin=Nthin, init=inits, pars=params.jags)
   sims.stan <- extract(fit.stan, permuted=FALSE)
   perf.stan <- data.frame(rstan::monitor(sims=sims.stan, warmup=0, print=FALSE, probs=.5))
   perf.platforms <- rbind(cbind(platform='jags',perf.jags),

@@ -7,12 +7,12 @@ setwd(paste0('models/',m))
 data <- readRDS('data.RDS')
 inits <- list(list(a=rep(3.5, len=data$K-1), a1=0, b0=rep(2, len=4), b1=rep(0, len=4),
                    sigmayearphi=.7, sigmaphi=.5, sigmap=.9,
-                   fameffphi=rep(0, len=data$nfam),
-                   fameffp=rep(0, len=data$nfam),
-                   yeareffphi=rep(0, len=4)))
+                   fameffphi_raw=rep(0, len=data$nfam),
+                   fameffp_raw=rep(0, len=data$nfam),
+                   yeareffphi_raw=rep(0, len=4)))
 params.jags <-
     c('a', 'a1', 'b0', 'b1', 'sigmayearphi', 'sigmaphi', 'sigmap',
-      'fameffphi', 'fameffp', 'yeareffphi')
+      'fameffphi_raw', 'fameffp_raw', 'yeareffphi_raw')
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
@@ -30,9 +30,9 @@ inits <- lapply(1:length(seeds), function(i)
         sigmayearphi=sims.ind$sigmayearphi[i],
         sigmaphi=sims.ind$sigmaphi[i],
         sigmap=sims.ind$sigmap[i],
-        fameffphi=as.numeric(sims.ind[i, grep('fameffphi\\.', x=names(sims.ind))]),
-        fameffp=as.numeric(sims.ind[i, grep('fameffp\\.', x=names(sims.ind))]),
-        yeareffphi=as.numeric(sims.ind[i, grep('yeareffphi\\.', x=names(sims.ind))])))
+        fameffphi_raw=as.numeric(sims.ind[i, grep('fameffphi_raw\\.', x=names(sims.ind))]),
+        fameffp_raw=as.numeric(sims.ind[i, grep('fameffp_raw\\.', x=names(sims.ind))]),
+        yeareffphi_raw=as.numeric(sims.ind[i, grep('yeareffphi_raw\\.', x=names(sims.ind))])))
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,

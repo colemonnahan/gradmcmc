@@ -23,23 +23,25 @@ model {
 
     ## random effects; non-centered
     for(g in 1:nfam){
-        fameffphi[g]~dnorm(0,1/sigmaphi^2);
-        fameffp[g]~dnorm(0,1/sigmap^2);
+        fameffphi_raw[g]~dnorm(0,1);
+        fameffp_raw[g]~dnorm(0,1);
     }
     for(ye in 1:4){
-        yeareffphi[ye]~dnorm(0,1/sigmayearphi^2);
+        yeareffphi_raw[ye]~dnorm(0,1);
     }
 
     ## derived parameters
     for(i in 1:I){ ## loop over each individual
         ## calculate phi as a function of fixed and random effects
         for(t in 1:(K-1)) {
-            logit(phi[i,t]) <- a[t]+ a1*carez[i]+ yeareffphi[year[i]]+ fameffphi[family[i]];
+            logit(phi[i,t]) <- a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi_raw[year[i]]+
+                                      sigmaphi*fameffphi_raw[family[i]];
         }
-        ## calculate p as a function of fixed and random effects
+        ## calculate p as a function of fixed and random effectsa
         p[i,1] <- 1;  ## first occasion is marking occasion
         for(t in 2:K){
-            logit(p[i,t]) <- b0[year[i]] + b1[year[i]]*agec[t]+ fameffp[family[i]];
+            logit(p[i,t]) <- b0[year[i]] + b1[year[i]]*agec[t]+
+                                    sigmap*fameffp_raw[family[i]];
         }
     }
     ## probabilitiy of never being seen after last observation. ind here is
