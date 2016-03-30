@@ -10,6 +10,7 @@ library(reshape2)
 library(MASS)                           # has mvrnorm()
 ggwidth <- 8
 ggheight <- 5
+results.file <- function(file) paste0(main.dir,'results/', file)
 
 #' Run Stan and JAGS models to compare efficiency.
 #'
