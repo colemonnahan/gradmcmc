@@ -72,7 +72,7 @@ source(paste0('models/',m,'/run_model.R'))
 ## swallows; Example 14.5 from Korner-Nievergelt et al
 Nout <- 10000; Nthin <- 1;
 Nout.ind <- 200; Nthin.ind <- 100
-m <- 'swallows'
+m <- 'swallows_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ### End of Step 1.

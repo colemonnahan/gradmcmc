@@ -1,3 +1,7 @@
+// This model was adapted from section 14.5 of Korner-Nievergelt et al
+// 2015. It is a Cormack-Jolly-Seber model.
+
+// Last updated on 3/29/2016
 data {
   int<lower=2> K;                       // capture events
   int<lower=0> I;                       // number of individuals
@@ -22,9 +26,9 @@ parameters {
   real<lower=0, upper=5> sigmaphi;      // between family standard deviation in logit(phi)
   real<lower=0, upper=3> sigmayearphi;  // between-year standard deviation in logit(phi)
   real<lower=0, upper=5> sigmap;        // between family standard deviation in logit(p)
-  real fameffphi[nfam];        // family effects for phi
-  real fameffp[nfam];          // family effects for p
-  real yeareffphi[4];          // year effect on phi
+  real fameffphi_raw[nfam];        // family effects for phi
+  real fameffp_raw[nfam];          // family effects for p
+  real yeareffphi_raw[4];          // year effect on phi
 }
 
 transformed parameters {
@@ -36,14 +40,14 @@ transformed parameters {
   for(i in 1:I){ ## loop over each individual
     // calculate phi as a function of fixed and random effects
     for(t in 1:(K-1)) {
-      phi[i,t] <- inv_logit(a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi[year[i]]+
-			    sigmaphi*fameffphi[family[i]]);
+      phi[i,t] <- inv_logit(a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi_raw[year[i]]+
+			    sigmaphi*fameffphi_raw[family[i]]);
     }
     // calculate p as a function of fixed and random effectsa
     p[i,1] <- 1;  // first occasion is marking occasion
     for(t in 2:K){
       p[i,t] <- inv_logit(b0[year[i]] + b1[year[i]]*agec[t]+
-			  sigmap*fameffp[family[i]]);
+			  sigmap*fameffp_raw[family[i]]);
     }
     // probabilitiy of never being seen after last observation. ind here is
     // a reverse index so this loop goes from K:2, recursively calculating
@@ -70,9 +74,9 @@ model {
   sigmayearphi~student_t(2,0,1);
   sigmap~student_t(2,0,1);
   // random effects, vectorized
-  fameffphi~normal(0, 1);
-  fameffp~normal(0,1);
-  yeareffphi~normal(0, 1);
+  fameffphi_raw~normal(0, 1);
+  fameffp_raw~normal(0,1);
+  yeareffphi_raw~normal(0, 1);
   // likelihood
   for (i in 1:I) {
     // probability of survival, known alive since k<last

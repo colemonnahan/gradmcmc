@@ -1,5 +1,15 @@
-model {
+## This model was adapted from section 14.5 of Korner-Nievergelt et al
+## 2015. It is a Cormack-Jolly-Seber model.
 
+## We use the "ones" trick below to add log probabilities to the
+## accumulator. This means passing a vector or matrix of 1's as data, then
+## assigning a bernoulli likelihood. Further, to get the 'chi' variables a
+## little bit of index trickery was used. The Stan model uses a while loop
+## but that didnt work here so I passed an index in.  Another difference is
+## I calculated the 'last' quanities in R and pass them in.
+
+## Last updated on 3/29/2016
+model {
     ## priors
     for(i in 1:4) {
         b0[i]~dnorm(0,1/5^2);
@@ -13,25 +23,25 @@ model {
 
     ## random effects; non-centered
     for(g in 1:nfam){
-        fameffphi[g]~dnorm(0,1);
-        fameffp[g]~dnorm(0,1);
+        fameffphi_raw[g]~dnorm(0,1);
+        fameffp_raw[g]~dnorm(0,1);
     }
     for(ye in 1:4){
-        yeareffphi[ye]~dnorm(0,1);
+        yeareffphi_raw[ye]~dnorm(0,1);
     }
 
     ## derived parameters
     for(i in 1:I){ ## loop over each individual
         ## calculate phi as a function of fixed and random effects
         for(t in 1:(K-1)) {
-            logit(phi[i,t]) <- a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi[year[i]]+
-                                      sigmaphi*fameffphi[family[i]];
+            logit(phi[i,t]) <- a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi_raw[year[i]]+
+                                      sigmaphi*fameffphi_raw[family[i]];
         }
         ## calculate p as a function of fixed and random effectsa
         p[i,1] <- 1;  ## first occasion is marking occasion
         for(t in 2:K){
             logit(p[i,t]) <- b0[year[i]] + b1[year[i]]*agec[t]+
-                                    sigmap*fameffp[family[i]];
+                                    sigmap*fameffp_raw[family[i]];
         }
     }
     ## probabilitiy of never being seen after last observation. ind here is
