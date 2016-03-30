@@ -74,6 +74,8 @@ Nout <- 10000; Nthin <- 1;
 Nout.ind <- 200; Nthin.ind <- 100
 m <- 'swallows_nc'
 source(paste0('models/',m,'/run_model.R'))
+m <- 'swallows'
+source(paste0('models/',m,'/run_model.R'))
 
 ### End of Step 1.
 ### ------------------------------------------------------------
