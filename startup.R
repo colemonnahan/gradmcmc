@@ -309,16 +309,17 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
 #' to verify the posteriors are the same, effectively checking for bugs
 #' between models before doing performance comparisons
 #'
-verify.models <- function(model, params.jags, inits, data, Niter, Nthin,
+verify.models <- function(model, params.jags, inits, data, Nout, Nthin,
                           sink.console=TRUE){
   message('Starting independent runs')
   if(sink.console){
     sink(file='trash.txt', append=FALSE, type='output')
     on.exit(sink())
   }
+  Niter <- Nout*Nthin
+  Nwarmup <- Niter/2
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
-  Nwarmup <- Niter/2
   fit.jags <- jags(data=data, inits=inits, param=params.jags,
                    model.file=model.jags, n.chains=1, n.burnin=Nwarmup, n.iter=Niter,
                    n.thin=Nthin)
