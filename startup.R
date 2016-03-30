@@ -273,21 +273,36 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
     sims.jags <- sims.jags[,par.names]
     ## Massage qqplot results into long format for ggplot
     qq <- ldply(par.names, function(i){
-                    temp <- as.data.frame(qqplot(sims.jags[,i], sims.stan[,i], plot.it=FALSE))
-                    return(cbind(i,temp))
-                })
-    g <- ggplot(qq, aes(x,y))+ geom_point(alpha=.5) +
-        geom_abline(slope=1, col='red') + facet_wrap('i', scales='free') +
-            xlab('jags')+ ylab('stan') +
-                theme(axis.text.x=element_blank(), axis.text.y=element_blank())
-    ggsave('plots/model_comparison_qqplot.png', width=9, height=5)
+        temp <- as.data.frame(qqplot(sims.jags[,i], sims.stan[,i], plot.it=FALSE))
+        return(cbind(par=i,temp))
+    })
+    ## Since can be too many parameters, break them up into pages. Stolen
+    ## from
+    ## http://stackoverflow.com/questions/22996911/segment-facet-wrap-into-multi-page-pdf
+    noVars <- length(par.names)
+    noPlots <- 25
+    plotSequence <- c(seq(0, noVars-1, by = noPlots), noVars)
+    pdf('plots/model_comparison_qqplots.pdf', onefile=TRUE, width=ggwidth,
+        height=ggheight)
+    for(ii in 2:length(plotSequence)){
+        start <- plotSequence[ii-1] + 1;   end <- plotSequence[ii]
+        tmp <- subset(qq, par %in% par.names[start:end])
+        g <- ggplot(tmp, aes(x,y))+ geom_point(alpha=.5) +
+            geom_abline(slope=1, col='red') + facet_wrap('par',
+        scales='free', nrow=5) + xlab('jags')+ ylab('stan')
+           ## theme(axis.text.x=element_blank(), axis.text.y=element_blank())
+        g <- g+ theme(text=element_text(size=10))
+        print(g)
+    }
+    dev.off()
+
     if(!is.null(perf.platforms)){
         g <- ggplot(perf.platforms, aes(platform, value)) +
             facet_wrap('variable', scales='free')
         g <- g + if(nrow(perf.platforms)>50) geom_violin() else geom_point()
         ggsave('plots/model_comparison_convergence.png', g, width=9, height=5)
     }
-    return(invisible(g))
+    return(NULL)
 }
 #' Run models with thinning to get independent samples which are then used
 #' to verify the posteriors are the same, effectively checking for bugs
