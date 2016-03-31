@@ -28,7 +28,7 @@ dev.off()
 ## Get independent samples from each model to make sure they are coded the
 ## same
 verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
-              Nout=Nout.ind, Nthin=Nthin)
+              Nout=Nout.ind, Nthin=Nthin.ind)
 
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
