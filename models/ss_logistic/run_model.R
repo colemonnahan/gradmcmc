@@ -27,10 +27,25 @@ dev.off()
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
-fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              delta=delta.vec, lambda=lambda.vec, metric=metric)
+verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+              Nout=Nout.ind, Nthin=Nthin)
 
+sims.ind <- readRDS(file='sims.ind.RDS')
+sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
+inits <- lapply(1:length(seeds), function(i)
+  list(logr=sims.ind$logr[i],
+       logK=sims.ind$logK[i],
+       isigma2=sims.ind$isigma2[i],
+       itau2=sims.ind$itau2[i],
+       iq=sims.ind$iq[i],
+        u=as.numeric(sims.ind[i, grep('u\\.', x=names(sims.ind))])))
+
+## Fit empirical data with no thinning for efficiency tests
+fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
+              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              Nout=Nout)
+
+### NOT USED!
 ## ## Now loop through model sizes and run for default parameters, using JAGS
 ## ## and NUTS only.
 ## adapt.list <- perf.list <- list()

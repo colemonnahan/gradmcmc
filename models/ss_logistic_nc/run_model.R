@@ -14,7 +14,7 @@ r <- exp((inits[[1]]$logr))
 K <- exp((inits[[1]]$logK))
 sd.process <- sqrt(1/inits[[1]]$isigma2)
 trajectory <- rep(NA, data$N)
-trajectory[1] <- K*exp(inits[[1]]$u_raw[1]*sqrt(1/inits[[1]]$isigma2)-sd.process^2/2)
+trajectory[1] <- K*exp(inits[[1]]$u[1]-sd.process^2/2)
 for( yr in 2: data$N){
     Nt <- trajectory[yr-1]
     Ct <- data$catches[yr-1]
@@ -27,10 +27,25 @@ dev.off()
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
-fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              Nout=Nout, Nout.ind=Nout.ind, Nthin.ind=Nthin.ind,
-              delta=delta.vec, lambda=lambda.vec, metric=metric)
+verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+              Nout=Nout.ind, Nthin=Nthin)
 
+sims.ind <- readRDS(file='sims.ind.RDS')
+sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
+inits <- lapply(1:length(seeds), function(i)
+  list(logr=sims.ind$logr[i],
+       logK=sims.ind$logK[i],
+       isigma2=sims.ind$isigma2[i],
+       itau2=sims.ind$itau2[i],
+       iq=sims.ind$iq[i],
+        u_raw=as.numeric(sims.ind[i, grep('u_raw\\.', x=names(sims.ind))])))
+
+## Fit empirical data with no thinning for efficiency tests
+fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
+              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              Nout=Nout)
+
+### NOT USED!
 ## ## Now loop through model sizes and run for default parameters, using JAGS
 ## ## and NUTS only.
 ## adapt.list <- perf.list <- list()

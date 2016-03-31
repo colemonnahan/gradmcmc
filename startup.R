@@ -292,7 +292,7 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
             geom_abline(slope=1, col='red') + facet_wrap('par',
         scales='free', nrow=5) + xlab('jags')+ ylab('stan')
            ## theme(axis.text.x=element_blank(), axis.text.y=element_blank())
-        g <- g+ theme(text=element_text(size=10))
+        g <- g+ theme(text=element_text(size=7))
         print(g)
     }
     dev.off()
