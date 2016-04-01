@@ -52,7 +52,7 @@ m <- 'growth_nct'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
-Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 200000; Nthin <- 1; Nthin.ind <- 500
 m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
@@ -61,12 +61,6 @@ source(paste0('models/',m,'/run_model.R'))
 ## Red kite example from Kery and Schaub; 8.4 w/ informative prior
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 1000
 m <- 'redkite'
-source(paste0('models/',m,'/run_model.R'))
-
-## Swiss tit example from Kery and Schaub; 4 full model w/ informative
-## prior. BROKEN BECAUSE THE DATA INPUTS ARE DIFFERENT DUE TO MISSING VALUES
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 10
-m <- 'tits'
 source(paste0('models/',m,'/run_model.R'))
 
 ## swallows; Example 14.5 from Korner-Nievergelt et al
