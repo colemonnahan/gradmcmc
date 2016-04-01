@@ -120,46 +120,42 @@ growth$centered[growth$model %in% c('growth_nc', 'growth_nct')] <- 'noncentered'
 growth$normal <- 'normal'
 growth$normal[growth$model %in% c('growth_t', 'growth_nct')] <- 'student-t'
 growth.means <- ddply(growth, .(platform, model, Npar, normal, centered), summarize,
-                      mean.samples.per.time=mean(samples.per.time))
-growth.means.wide <- dcast(subset(growth.means, Npar==15), model+Npar+centered+normal~platform, value.var='mean.samples.per.time')
+                      mean.samples.per.time=round(mean(samples.per.time),2))
+growth.means.wide <- dcast(subset(growth.means), model+Npar+centered+normal~platform, value.var='mean.samples.per.time')
 growth.means.wide$stan_re <- with(growth.means.wide, round(stan.nuts/jags, 2))
-mvn <- subset(simulated, model == 'mvn')
+mvn <- subset(simulated, model %in% c('mvnd', 'mvnc'))
+mvn.means <- ddply(mvn, .(platform, model, Npar, cor), summarize,
+                      mean.samples.per.time=round(mean(samples.per.time),2))
 ## Write them to file
-write.csv(empirical, file='results/empirical.csv')
-write.csv(simulated, file='results/simulated.csv')
+write.table(empirical, file='results/empirical.csv', sep=',',
+            row.names=FALSE, col.names=TRUE)
+write.table(simulated, file='results/simulated.csv', sep=',',
+            row.names=FALSE, col.names=TRUE)
+write.table(file='results/table_growth.csv', x=growth.means.wide, sep=',',
+            row.names=FALSE, col.names=TRUE)
 ### End of Step 3.
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
-### Step 4: Create plots, figures, and tables
-
+### Step 4: Create exploratory plots
 m <- c('ss_logistic', 'redkite', 'growth_nct', 'swallows', 'mvnc','mnvd')
-g <- ggplot(subset(empirical.means.normalized, platform!='jags' & model %in% m)) +
-    geom_line(aes(delta.target, normalized.samples.per.time, color=model))
+g <- ggplot(subset(empirical, platform!='jags' & model %in% m)) +
+    geom_point(aes(delta.target, log(samples.per.time))) + facet_wrap('model', scales='free_y')
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(all.wide, aes(log(Npar), log(stan.re.perf), color=model, shape=kind)) +
-    geom_point() + geom_hline(yintercept=0)
-ggsave('plots/perf_by_Npar.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(all.wide, aes(x=log(jags), log(stan.nuts), color=model, shape=kind,
-                          size=Npar)) + geom_point() + geom_abline(1)
-ggsave('plots/perf_by_Npar2.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(all, aes(log(minESS), y=log(minESS.coda), color=model))  +
-    geom_point() + facet_wrap('platform') + xlim(0,7.5) +ylim(0,7.5) +
-        geom_abline(intercept=0,slope=1)
+g <- ggplot(subset(empirical, model %in% m), aes(log(minESS), y=log(minESS.coda), color=model))  +
+    geom_point() + xlim(0,7.5) +ylim(0,7.5) +
+        geom_abline(intercept=0,slope=1) + facet_grid(platform~model)
 ggsave('plots/ESS_comparison.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(data=growth, aes(log(Npar), log(samples.per.time), color=platform)) +
-    geom_point() + facet_grid(centered~normal)
+g <- ggplot(data=growth.means,
+            aes(log(Npar), log(mean.samples.per.time), group=centered,
+                color=centered)) +
+    geom_line(alpha=.5) + facet_grid(platform~normal)
 ggsave('plots/perf_growth_simulated.png', g, width=ggwidth, height=ggheight)
-
-
-g <- ggplot(mvn, aes(log(Npar), log(samples.per.time),
-                          color=platform)) + geom_point()
+g <- ggplot(subset(mvn.means, model=='mvnd'),
+            aes(log(Npar), log(mean.samples.per.time), color=factor(cor), group=cor)) +
+  geom_line() + facet_wrap('platform')
 ggsave('plots/perf_mvn_simulated.png', g, width=ggwidth,
        height=ggheight)
-
-write.csv(file='results/table.csv', dcast(subset(empirical.means, platform=='jags' | delta.target==.8),
-      formula=model~platform, value.var='mean.samples.per.time'))
-write.csv(file='results/table_growth.csv', x=growth.means.wide)
 ### End of Step 4.
 ### ------------------------------------------------------------
 
