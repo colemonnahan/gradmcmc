@@ -14,7 +14,7 @@ source("startup.R")
 Nout.ind <- 1000
 seeds <- c(1:6)
 lambda.vec <- NULL
-delta.vec <- c(.5, .7, .8, .9, .95)
+delta.vec <- .8 #c(.5, .7, .8, .9, .95)
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ### End of Step 0.
 ### ------------------------------------------------------------
@@ -25,23 +25,24 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ## Run multivariate normal, empirical and simulated
 m <- 'mvnd'
 verify <- TRUE
-Nout <- 10000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
+## cor is a factor for independent (0) or from wishart (1)
 cor.vec <- c(0,1)
-Npar.vec <- c(5, 50, 100, 200, 400, 1000)
+Npar.vec <- c(5, 50, 100, 200)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run MVN with varying correlations and a fixed Npar
 m <- 'mvnc'
 verify <- TRUE
 Npar <- 5
-Nout <- 500; Nthin <- 1; Nthin.ind <- 10
-cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999, .9999)[c(1,11)]
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 10
+cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999)
 Npar.vec <- c(2, 5)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
-Nout <- 500; Nthin <- 1; Nthin.ind <- 5
-Npar.vec <- c(5,10,50, 100)[1:2]
+Nout <- 100000; Nthin <- 1; Nthin.ind <- 100
+Npar.vec <- c(5,10,50, 100)
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
@@ -52,20 +53,19 @@ m <- 'growth_nct'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
-Nout <- 200000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 100000; Nthin <- 1; Nthin.ind <- 500
 m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Red kite example from Kery and Schaub; 8.4 w/ informative prior
-Nout <- 20000; Nthin <- 1; Nthin.ind <- 1000
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
 m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
 
 ## swallows; Example 14.5 from Korner-Nievergelt et al
-Nout <- 10000; Nthin <- 1;
-Nout.ind <- 200; Nthin.ind <- 100
+Nout <- 200000; Nthin <- 1; Nthin.ind <- 100
 m <- 'swallows_nc'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'swallows'
@@ -127,19 +127,24 @@ write.table(simulated, file='results/simulated.csv', sep=',',
             row.names=FALSE, col.names=TRUE)
 write.table(file='results/table_growth.csv', x=growth.means.wide, sep=',',
             row.names=FALSE, col.names=TRUE)
+print(subset(empirical, platform=='jags' & seed ==1, select=c(model, Nsims)))
 ### End of Step 3.
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
 ### Step 4: Create exploratory plots
-m <- c('ss_logistic', 'redkite', 'growth_nct', 'swallows', 'mvnc','mnvd')
+|m <- c('ss_logistic', 'redkite', 'growth_nct', 'swallows', 'mvnc','mnvd')
 g <- ggplot(subset(empirical, platform!='jags' & model %in% m)) +
     geom_point(aes(delta.target, log(samples.per.time))) + facet_wrap('model', scales='free_y')
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(subset(empirical, model %in% m), aes(log(minESS), y=log(minESS.coda), color=model))  +
-    geom_point() + xlim(0,7.5) +ylim(0,7.5) +
-        geom_abline(intercept=0,slope=1) + facet_grid(platform~model)
+g <- ggplot(empirical, aes((minESS/Nsims), y=(minESS.coda/Nsims), color=model))  +
+    geom_point() + geom_abline(intercept=0,slope=1) +
+      facet_grid(platform~model) + ylim(0,1)+ xlim(0,1)
 ggsave('plots/ESS_comparison.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(empirical, aes(model, y=(minESS/Nsims)))  +
+  geom_violin()+ ylim(0,1) + facet_wrap('platform') +
+    theme(axis.text.x = element_text(angle = 90))
+ggsave('plots/ESS_percentages.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(data=growth.means,
             aes(log(Npar), log(mean.samples.per.time), group=centered,
                 color=centered)) +

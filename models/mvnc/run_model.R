@@ -11,12 +11,8 @@ params.jags <- 'mu'
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
-message(paste('\n\n\n\n\n=====================Starting model:', m))
-if(verify){
-  message('Starting independent sampling')
-  verify.models(model=m, params.jag=params.jags, inits=inits, data=data,
-                Niter=2*(Nthin.ind*Nout.ind), Nthin=Nthin.ind)
-}
+verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+              Nout=Nout.ind, Nthin=Nthin.ind)
 
 ## Use independent draws from the verify.model output to use for initial
 ## values. Each model has a different way to format the inits data.

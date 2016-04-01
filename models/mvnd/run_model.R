@@ -11,15 +11,9 @@ params.jags <- 'mu'
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
-message(paste('\n\n\n\n\n=====================Starting model:', m))
-if(verify){
-  message('Starting independent sampling')
-  verify.models(model=m, params.jag=params.jags, inits=inits, data=data,
-                Niter=2*(Nthin.ind*Nout.ind), Nthin=Nthin.ind)
-}
+verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+              Nout=Nout.ind, Nthin=Nthin.ind)
 
-## Use independent draws from the verify.model output to use for initial
-## values. Each model has a different way to format the inits data.
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
 inits <- lapply(1:length(seeds), function(i) list(mu=as.numeric(sims.ind[i,])))

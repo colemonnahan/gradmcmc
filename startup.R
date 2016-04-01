@@ -35,8 +35,6 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                        sink.console=TRUE){
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
-  if(Nthin != 1)
-    stop("Nthin must be one, delta.final calculation may break otherwise")
   Niter <- Nout*Nthin
   Nwarmup <- Niter/2
   ind.samples <- (Nwarmup/Nthin+1):Nout    # index of samples, excluding warmup
