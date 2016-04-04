@@ -314,7 +314,7 @@ verify.models <- function(model, params.jags, inits, data, Nout, Nthin,
     sink(file='trash.txt', append=FALSE, type='output')
     on.exit(sink())
   }
-  Niter <- Nout*Nthin
+  Niter <- 2*Nout*Nthin
   Nwarmup <- Niter/2
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')

@@ -1,26 +1,27 @@
 model{
-    ## hyperpriors
-    logLinf_mean~dnorm(log(50),.5)
-    logLinf_sigma~dunif(0,.5)
-    logk_mean~dnorm(log(.1),.1)
-    logk_sigma~dunif(0,.5)
-    ## priors
-    sigma_obs~dunif(0,.5)
+##	priors
     delta~dunif(0,5)
+	sigma_obs~dt(0,1/(25^2),1)I(0,) 	## implies half-cauchy with scale of 5
+    
+	## hyperpriors
+    logLinf_mean~dunif(-5,5)
+    logLinf_sigma~dt(0, 1/(25^2),1)I(0,)
+    logk_mean~dunif(-5,5)
+    logk_sigma~dt(0,1/(25^2),1)I(0,)
+
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
     for(i in 1:Nfish){
         logLinf[i]~dnorm(logLinf_mean, pow(logLinf_sigma, -2))
         logk[i]~dnorm(logk_mean, pow(logk_sigma, -2))
     }
+	
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
         Linf[i] <- exp(logLinf[fish[i]])
         k[i] <- exp(logk[fish[i]])
-        ypred[i] <- Linf[i]*(1-exp(-k[i]*(ages[i]-5)))^delta
-        ## ypred[i] <- logLinf[fish[i]]+
-        ##     log( (1-exp(-exp(logk[fish[i]])*ages[i])))
-        ## Likelihood of data
-        loglengths[i]~dnorm(log(ypred[i]), pow(sigma_obs, -2))
+        ypred[i] <- log(Linf[i]*(1-exp(-k[i]*(ages[i]-5)))^delta)
+         ## Likelihood of data
+        loglengths[i]~dnorm(ypred[i], pow(sigma_obs, -2))
     }
 }

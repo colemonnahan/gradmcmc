@@ -6,40 +6,53 @@ data {
   int ages[Nobs];      // observed ages
 }
 parameters {
-  // the hyperparameters with uniform priors on them
-  real logLinf_mean;
-  real<lower=0.01, upper=.5> logLinf_sigma;
-  real logk_mean;
-  real<lower=0.01, upper=.5> logk_sigma;
   // fixed effects
-  real<lower=0, upper=.5> sigma_obs; // data on log scale
-  // random effects, standard normal and then trasnformed below
-  vector<lower=-5, upper=5>[Nfish] logLinf_raw;
-  vector<lower=-5, upper=5>[Nfish] logk_raw;
-  real<lower=0, upper=5> delta;
+  real<lower=.9, upper=1.01> delta;
+  real<lower=0> sigma_obs; // data on log scale
+
+  // hyperparameters with bounds
+  real<lower=-5, upper=5> logLinf_mean;
+  real<lower=-5, upper=5> logk_mean;
+  real<lower=0> logLinf_sigma;
+  real<lower=0> logk_sigma;
+
+  // random effects, bounded to increase stability during tuning
+  vector[Nfish] logLinf_raw;
+  vector[Nfish] logk_raw;
 }
 
-transformed parameters{
- vector[Nfish] logLinf;
- vector[Nfish] logk;
- // Matt trick: implies logLinf~N(logLinf_mean, logLinf_sigma); etc.
- logLinf  <- logLinf_mean+logLinf_sigma*logLinf_raw;
- logk <- logk_mean+logk_sigma*logk_raw;
- }
-model {
- // Loop through random effects and do hyperpriors
- real Linf;
- real k;
- real ypred[Nobs];
- // hyperparams
- logLinf_raw~normal(0,1);
- logk_raw~normal(0,1);
+transformed parameters {
+  // non-centered random effects, implies logk~N(logk_mean, logk_sigma) etc.
+  vector[Nfish] logLinf;
+  vector[Nfish] logk;
+  logLinf <- logLinf_mean+logLinf_raw*logLinf_sigma;
+  logk <- logk_mean+logk_raw*logk_sigma;
+}
 
- // calculate likelihood of data
- for(i in 1:Nobs){
-  Linf <- exp(logLinf[fish[i]]);
-  k <- exp(logk[fish[i]]);
-  ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
- }
+model {
+  real Linf;
+  real k;
+  real ypred[Nobs];
+  // priors
+  // delta is uniform above
+  sigma_obs~cauchy(0,25);
+
+  // hyperpriors
+  logLinf_sigma~cauchy(0,25);
+  logk_sigma~cauchy(0,25);
+  // hyper means are uniform above
+
+  // random effects; non-centered
+  logLinf_raw~normal(0, 1);
+  logk_raw~normal(0, 1);
+
+  // calculate likelihood of data
+  for(i in 1:Nobs){
+    Linf  <- exp(logLinf[fish[i]]);
+    k <- exp(logk[fish[i]]);
+    ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
+    if(ypred[i] < -10) reject("i= ",i, "; ypred=", ypred[i], "; logk= ", logk[fish[i]], "; logLinf=",logLinf[fish[i]], "; logk_sigma=", logk_sigma);
+  }
+
   loglengths~normal(ypred, sigma_obs);
 }

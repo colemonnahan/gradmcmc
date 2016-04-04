@@ -48,15 +48,11 @@ Npar.vec <- c(2, 50, 100)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
-Nout <- 100000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 100000; Nthin <- 1; Nthin.ind <- 500
 Npar.vec <- c(5,10,50, 100)
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
-source(paste0('models/',m,'/run_model.R'))
-m <- 'growth_t'
-source(paste0('models/',m,'/run_model.R'))
-m <- 'growth_nct'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
