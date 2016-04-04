@@ -12,7 +12,7 @@ main.dir <- 'C:/Users/Cole/gradmcmc/'
 setwd(main.dir)
 source("startup.R")
 Nout.ind <- 1000
-seeds <- c(1:6)
+seeds <- c(1:10)
 lambda.vec <- NULL
 delta.vec <- .8 #c(.5, .7, .8, .9, .95)
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
@@ -24,20 +24,20 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 
 ## Run multivariate normal, empirical and simulated
 m <- 'mvnd'
-verify <- TRUE
+verify <- FALSE
 Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
 ## cor is a factor for independent (0) or from wishart (1)
 cor.vec <- c(0,1)
-Npar.vec <- c(5, 50, 100, 200)
+Npar.vec <- c(2, 5, 25, 50, 100, 150, 200)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run MVN with varying correlations and a fixed Npar
 m <- 'mvnc'
-verify <- TRUE
+verify <- FALSE
 Npar <- 5
 Nout <- 50000; Nthin <- 1; Nthin.ind <- 10
 cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999)
-Npar.vec <- c(2, 5)
+Npar.vec <- c(2, 50, 100)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered

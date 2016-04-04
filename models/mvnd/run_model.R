@@ -36,7 +36,7 @@ for(j in cor.vec){
     set.seed(115)
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
-                       seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL, sink=FALSE)
+                       seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
     adapt.list[[k]] <- cbind(temp$adapt, cor=j)
     perf.list[[k]] <- cbind(temp$perf, cor=j)
     ## Save them as we go in case it fails
