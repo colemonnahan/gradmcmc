@@ -16,6 +16,13 @@ seeds <- c(1:10)
 lambda.vec <- NULL
 delta.vec <- .8 #c(.5, .7, .8, .9, .95)
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
+
+.Call('get_version', package='rjags')   # JAGS version 4.2.0
+version$version.string                  # R version 3.2.3
+packageVersion('rstan')                 # 2.8.2
+packageVersion('R2jags')                # 0.5.7
+packageVersion('rjags')                 # 4.4
+
 ### End of Step 0.
 ### ------------------------------------------------------------
 
@@ -82,6 +89,15 @@ source(paste0('models/',m,'/run_model.R'))
 ### ------------------------------------------------------------
 ### Step 3: Load and prepare result data frames for plotting and tables
 setwd(main.dir)
+## Loop through and get the maximum correlation of each model for merging
+## into the main results.
+cor.table <- ldply(list.files('models'), function(i) {
+              xx <- readRDS(file.path('models', i, 'sims.ind.RDS'))
+              cortemp <- cor(xx)
+              max.cor <- max(abs(cortemp[lower.tri(cortemp)]))
+              median.cor <- median(abs(cortemp[lower.tri(cortemp)]))
+              data.frame(model=i, max.cor=max.cor, median.cor=median.cor)
+            })
 empirical <- ldply(list.files('results', pattern='perf_empirical'), function(i)
     read.csv(paste0('results/',i)))
 ## normalize by maximum run time across delta.target values
@@ -92,9 +108,13 @@ empirical <-
           median.efficiency=quantile(samples.per.time, probs=.5),
           lwr.efficiency=min(samples.per.time),
           upr.efficiency=max(samples.per.time))
-## empirical.means.normalized <-
-##     ddply(empirical.means, .(platform, model), mutate,
-##           normalized.samples.per.time=mean.samples.per.time/max(mean.samples.per.time))
+empirical <- merge(x=empirical, y=cor.table, by='model')
+empirical.means <-
+    ddply(empirical, .(platform, model, Npar, max.cor), summarize,
+          mean.samples.per.time=mean(samples.per.time))
+empirical.means.wide <- dcast(subset(empirical.means), model+Npar+max.cor~platform,
+                              value.var='mean.samples.per.time')
+empirical.means.wide$stan_re <- with(empirical.means.wide, round(stan.nuts/jags, 2))
 simulated <- ldply(list.files('results', pattern='perf_simulated'), function(i)
     read.csv(paste0('results/',i)))
 simulated <-
@@ -127,13 +147,15 @@ write.table(simulated, file='results/simulated.csv', sep=',',
             row.names=FALSE, col.names=TRUE)
 write.table(file='results/table_growth.csv', x=growth.means.wide, sep=',',
             row.names=FALSE, col.names=TRUE)
+write.table(file='results/table_cor.csv', x=cor.table, sep=',',
+            row.names=FALSE, col.names=TRUE)
 print(subset(empirical, platform=='jags' & seed ==1, select=c(model, Nsims)))
 ### End of Step 3.
 ### ------------------------------------------------------------
 
 ### ------------------------------------------------------------
 ### Step 4: Create exploratory plots
-|m <- c('ss_logistic', 'redkite', 'growth_nct', 'swallows', 'mvnc','mnvd')
+m <- c('ss_logistic', 'redkite', 'growth_nc', 'swallows', 'mvnc','mvnd')
 g <- ggplot(subset(empirical, platform!='jags' & model %in% m)) +
     geom_point(aes(delta.target, log(samples.per.time))) + facet_wrap('model', scales='free_y')
 ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
@@ -154,6 +176,10 @@ g <- ggplot(subset(mvn.means, model=='mvnd'),
             aes(log(Npar), log(mean.samples.per.time), color=factor(cor), group=cor)) +
   geom_line() + facet_wrap('platform')
 ggsave('plots/perf_mvn_simulated.png', g, width=ggwidth,
+       height=ggheight)
+g <- ggplot(empirical.means.wide, aes(log(Npar), max.cor, color=log(stan_re)>0,
+       size=abs(log(stan_re)))) + geom_point()
+ggsave('plots/perf_by_N_cor.png', g, width=ggwidth,
        height=ggheight)
 ### End of Step 4.
 ### ------------------------------------------------------------
