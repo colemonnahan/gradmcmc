@@ -7,16 +7,16 @@ data {
 }
 parameters {
   // fixed effects
-  real<lower=.9, upper=1.01> delta;
-  real<lower=0> sigma_obs; // data on log scale
+  real<lower=0, upper=5> delta;
+  real<lower=0, upper=2> sigma_obs; // data on log scale
 
   // hyperparameters with bounds
   real<lower=-5, upper=5> logLinf_mean;
   real<lower=-5, upper=5> logk_mean;
-  real<lower=0> logLinf_sigma;
-  real<lower=0> logk_sigma;
+  real<lower=0, upper=2> logLinf_sigma;
+  real<lower=0, upper=2> logk_sigma;
 
-  // random effects, bounded to increase stability during tuning
+  // non-centered random effects
   vector[Nfish] logLinf_raw;
   vector[Nfish] logk_raw;
 }
@@ -33,13 +33,14 @@ model {
   real Linf;
   real k;
   real ypred[Nobs];
+
   // priors
   // delta is uniform above
-  sigma_obs~cauchy(0,25);
+  sigma_obs~cauchy(0,2);
 
   // hyperpriors
-  logLinf_sigma~cauchy(0,25);
-  logk_sigma~cauchy(0,25);
+  logLinf_sigma~cauchy(0,2);
+  logk_sigma~cauchy(0,2);
   // hyper means are uniform above
 
   // random effects; non-centered
@@ -51,8 +52,6 @@ model {
     Linf  <- exp(logLinf[fish[i]]);
     k <- exp(logk[fish[i]]);
     ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
-    if(ypred[i] < -10) reject("i= ",i, "; ypred=", ypred[i], "; logk= ", logk[fish[i]], "; logLinf=",logLinf[fish[i]], "; logk_sigma=", logk_sigma);
   }
-
   loglengths~normal(ypred, sigma_obs);
 }

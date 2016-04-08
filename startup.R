@@ -283,7 +283,7 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
     plotSequence <- c(seq(0, noVars-1, by = noPlots), noVars)
     ## pdf('plots/model_comparison_qqplots.pdf', onefile=TRUE,
     ## width=ggwidth,height=ggheight)
-    png('plots/model_comparison_qqplots%01d.png', units='in', res=500,
+    png('plots/model_comparison_qqplots%02d.png', units='in', res=500,
         width=ggwidth,height=ggheight)
     for(ii in 2:length(plotSequence)){
         start <- plotSequence[ii-1] + 1;   end <- plotSequence[ii]

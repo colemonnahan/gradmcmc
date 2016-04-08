@@ -32,11 +32,7 @@ params.jags <-
 ## Get independent samples from each model to make sure they are coded the
 ## same
 verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
-              Nout=Nout.ind, Nthin=Nthin.ind, sink=FALSE)
-
-.stan <- stan('growth_nc.stan', data=data, pars=params.jags, chains=1,
-              iter=5, init=inits)
-
+              Nout=Nout.ind, Nthin=Nthin.ind, sink=sink)
 
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]

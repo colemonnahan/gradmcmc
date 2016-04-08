@@ -8,17 +8,17 @@ data {
 parameters {
   // fixed effects
   real<lower=0, upper=5> delta;
-  real<lower=0> sigma_obs; // data on log scale
+  real<lower=0, upper=2> sigma_obs; // data on log scale
 
   // hyperparameters with bounds
   real<lower=-5, upper=5> logLinf_mean;
   real<lower=-5, upper=5> logk_mean;
-  real<lower=0> logLinf_sigma;
-  real<lower=0> logk_sigma;
+  real<lower=0, upper=2> logLinf_sigma;
+  real<lower=0, upper=2> logk_sigma;
 
   // random effects
-  real logLinf[Nfish];
-  real logk[Nfish];
+  real<lower=-10, upper=10> logLinf[Nfish];
+  real<lower=-10, upper=10> logk[Nfish];
 }
 
 model {
@@ -28,11 +28,11 @@ model {
 
   // priors
   // delta is uniform above
-  sigma_obs~cauchy(0,25);
+  sigma_obs~cauchy(0,2);
 
   // hyperpriors
-  logLinf_sigma~cauchy(0,25);
-  logk_sigma~cauchy(0,25);
+  logLinf_sigma~cauchy(0,2);
+  logk_sigma~cauchy(0,2);
   // hyper means are uniform above
 
   // random effects
