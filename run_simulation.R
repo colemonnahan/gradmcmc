@@ -16,8 +16,11 @@ seeds <- c(1:10)
 lambda.vec <- NULL
 delta.vec <- .8 #c(.5, .7, .8, .9, .95)
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
+## Suppress JAGS and Stan output? Useful after debugging to clean up
+## console and judge progress.
+sink <- FALSE
 
-.Call('get_version', package='rjags')   # JAGS version 4.2.0
+.call('get_version', package='rjags')   # JAGS version 4.2.0
 version$version.string                  # R version 3.2.3
 packageVersion('rstan')                 # 2.8.2
 packageVersion('R2jags')                # 0.5.7
@@ -48,15 +51,11 @@ Npar.vec <- c(2, 50, 100)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
-Nout <- 100000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 100000; Nthin <- 1; Nthin.ind <- 500
 Npar.vec <- c(5,10,50, 100)
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
-source(paste0('models/',m,'/run_model.R'))
-m <- 'growth_t'
-source(paste0('models/',m,'/run_model.R'))
-m <- 'growth_nct'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic

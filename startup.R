@@ -281,8 +281,10 @@ plot.model.comparisons <- function(sims.stan, sims.jags, perf.platforms=NULL){
     noVars <- length(par.names)
     noPlots <- 25
     plotSequence <- c(seq(0, noVars-1, by = noPlots), noVars)
-    pdf('plots/model_comparison_qqplots.pdf', onefile=TRUE, width=ggwidth,
-        height=ggheight)
+    ## pdf('plots/model_comparison_qqplots.pdf', onefile=TRUE,
+    ## width=ggwidth,height=ggheight)
+    png('plots/model_comparison_qqplots%02d.png', units='in', res=500,
+        width=ggwidth,height=ggheight)
     for(ii in 2:length(plotSequence)){
         start <- plotSequence[ii-1] + 1;   end <- plotSequence[ii]
         tmp <- subset(qq, par %in% par.names[start:end])
@@ -314,7 +316,7 @@ verify.models <- function(model, params.jags, inits, data, Nout, Nthin,
     sink(file='trash.txt', append=FALSE, type='output')
     on.exit(sink())
   }
-  Niter <- Nout*Nthin
+  Niter <- 2*Nout*Nthin
   Nwarmup <- Niter/2
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
