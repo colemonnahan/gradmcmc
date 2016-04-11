@@ -18,7 +18,7 @@ delta.vec <- .8 #c(.5, .7, .8, .9, .95)
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ## Suppress JAGS and Stan output? Useful after debugging to clean up
 ## console and judge progress.
-sink <- FALSE
+sink <- TRUE
 
 .call('get_version', package='rjags')   # JAGS version 4.2.0
 version$version.string                  # R version 3.2.3
