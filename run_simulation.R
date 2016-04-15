@@ -148,7 +148,10 @@ write.table(file='results/table_growth.csv', x=growth.means.wide, sep=',',
             row.names=FALSE, col.names=TRUE)
 write.table(file='results/table_cor.csv', x=cor.table, sep=',',
             row.names=FALSE, col.names=TRUE)
+write.table(file='results/table_perf.csv', x=empirical.means.wide, sep=',',
+            row.names=FALSE, col.names=TRUE)
 print(subset(empirical, platform=='jags' & seed ==1, select=c(model, Nsims)))
+
 ### End of Step 3.
 ### ------------------------------------------------------------
 
