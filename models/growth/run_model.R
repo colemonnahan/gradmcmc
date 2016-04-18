@@ -26,13 +26,13 @@ inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
                   logLinf=rep(logLinf.mean, len=Nfish),
                   logk=rep(logk.mean, len=Nfish), delta=1))
 params.jags <-
-    c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma",
-      "sigma_obs", "logk", "logLinf", "delta")
+    c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma", "logk", "logLinf",
+      "sigma_obs", "delta")
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
 verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
-              Nout=Nout.ind, Nthin=Nthin.ind)
+              Nout=Nout.ind, Nthin=Nthin.ind, sink=sink)
 
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
