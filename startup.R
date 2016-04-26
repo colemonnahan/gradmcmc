@@ -320,6 +320,9 @@ verify.models <- function(model, params.jags, inits, data, Nout, Nthin,
   Nwarmup <- Niter/2
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
+  ## Save the algorithms used by jags
+  temp <- list.samplers(jags.model(file=model.jags, data=data, inits=inits, quiet=TRUE))
+  write.table(table(names(temp)), file='jags.samplers.csv', sep=',', row.names=FALSE)
   fit.jags <- jags(data=data, inits=inits, param=params.jags,
                    model.file=model.jags, n.chains=1, n.burnin=Nwarmup, n.iter=Niter,
                    n.thin=Nthin)
