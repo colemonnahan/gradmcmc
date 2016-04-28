@@ -191,3 +191,15 @@ ggsave('plots/perf_by_N_cor.png', g, width=ggwidth,
 
 ### ------------------------------------------------------------
 ## Development code
+test <- stan(file='swallows_nc.stan', data=data, init=inits,
+             pars=params.jags, iter=2000, chains=1)
+
+sims.stan.nuts <- extract(test, permuted=FALSE)
+perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
+names.temp <- row.names(perf.stan.nuts)[which(order(perf.stan.nuts$n_eff)<5)]
+
+plot(test, pars=params.jags[1:7])
+rstan::traceplot(test, pars=params.jags[1:7])
+pairs(test, pars=names.temp)
+library(shinystan)
+launch_shinystan(test)
