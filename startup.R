@@ -93,12 +93,14 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
         Rhat.stan.nuts <- with(perf.stan.nuts, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
         adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts))
         adapt.list[[k]] <-
-          data.frame(platform='NUTS', seed=seed,
+          data.frame(platform='stan.nuts', seed=seed,
                      Npar=dim(sims.stan.nuts)[3]-1,
                      Nsims=dim(sims.stan.nuts)[1],
                      delta.mean=mean(adapt.nuts$accept_stat__[ind.samples]),
                      delta.target=idelta,
                      eps.final=tail(adapt.nuts$stepsize__,1),
+                     max_treedepths=sum(adapt.nuts$treedepth__[ind.samples]==10),
+                     ndivergent=sum(adapt.nuts$n_divergent__[ind.samples]),
                      nsteps.mean=mean(adapt.nuts$n_leapfrog__[ind.samples]),
                      nsteps.median=median(adapt.nuts$n_leapfrog__[ind.samples]),
                      nsteps.sd=sd(adapt.nuts$n_leapfrog__[ind.samples]),
