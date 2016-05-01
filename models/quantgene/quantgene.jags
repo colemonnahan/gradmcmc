@@ -1,0 +1,38 @@
+## This is the glmmMCMC code:
+## body_weight ~ Reciprocal_Cross + degree_days_centered, random =
+##              ~animal + Dam + Tank_ID + ID
+
+model {
+
+## Fixed effects with vague normal priors
+for(i in 1:n_cross) {a[i]~dnorm(0, 1/1e10)} # cross effects
+b~dnorm(0,1/1e10);                         # days effect
+
+## Random effects: variance terms; inverse Wishart priors
+sa2~dt(0,1,2);		## additive genetic effects (animal?)
+sm2~dt(0,1,2);		## maternal effects (ID?)
+st2~dt(0,1,2);		## tank effects (Tank_ID?)
+sf2~dt(0,1,2);		## family effects (Dam?)
+se2~dt(0,1,2);		## residual error
+## sa2~dnorm(.0981, 1);		## additive genetic effects (animal?)
+## sm2~dnorm(.0981, 1);		## maternal effects (ID?)
+## st2~dnorm(.0981, 1);		## tank effects (Tank_ID?)
+## sf2~dnorm(.0981, 1);		## family effects (Dam?)
+## se2~dnorm(.0981, 1);		## residual error
+
+## Hyperdistribution
+for(i in 1:n_animal) {ua[i]~dnorm(0,1/sa2)}
+for(i in 1:n_ID) {um[i]~dnorm(0,1/sm2)}
+for(i in 1:n_Tank_ID) {ut[i]~dnorm(0,1/st2)}
+for(i in 1:n_Dam) {uf[i]~dnorm(0,1/sf2)}
+
+## model predictions and likelihood
+for(i in 1:N){
+  ypred[i] <- a[cross[i]]+ b*days[i]+ ua[animal[i]]+ um[ID[i]]+
+    ut[Tank_ID[i]] +uf[Dam[i]]
+  ## likelihood
+  body_weight[i]~dnorm(ypred[i], 1/se2)
+}
+}
+
+
