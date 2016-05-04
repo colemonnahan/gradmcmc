@@ -87,7 +87,8 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
           stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
                init=inits.seed, seed=seed, par=params.jags,
-               control=list(adapt_engaged=TRUE, adapt_delta=idelta, metric=imetric))
+               control=list(adapt_engaged=TRUE, adapt_delta=idelta,
+                 metric=imetric, max_treedepth=10))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
         Rhat.stan.nuts <- with(perf.stan.nuts, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
@@ -99,7 +100,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                      delta.mean=mean(adapt.nuts$accept_stat__[ind.samples]),
                      delta.target=idelta,
                      eps.final=tail(adapt.nuts$stepsize__,1),
-                     max_treedepths=sum(adapt.nuts$treedepth__[ind.samples]==10),
+                     max_treedepths=sum(adapt.nuts$treedepth__[ind.samples]>10),
                      ndivergent=sum(adapt.nuts$n_divergent__[ind.samples]),
                      nsteps.mean=mean(adapt.nuts$n_leapfrog__[ind.samples]),
                      nsteps.median=median(adapt.nuts$n_leapfrog__[ind.samples]),
