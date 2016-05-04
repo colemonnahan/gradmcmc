@@ -20,22 +20,18 @@ if(verify)
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
 inits <- lapply(1:length(seeds), function(i)
-    list(
-        a=as.numeric(sims.ind[i, grep('a\\.', x=names(sims.ind))]),
-        a1=sims.ind$a1[i],
-        b0=as.numeric(sims.ind[i, grep('b0\\.', x=names(sims.ind))]),
-        b1=as.numeric(sims.ind[i, grep('b1\\.', x=names(sims.ind))]),
-        sigmayearphi=sims.ind$sigmayearphi[i],
-        sigmaphi=sims.ind$sigmaphi[i],
-        sigmap=sims.ind$sigmap[i],
-        fameffphi_raw=as.numeric(sims.ind[i, grep('fameffphi_raw\\.', x=names(sims.ind))]),
-        fameffp_raw=as.numeric(sims.ind[i, grep('fameffp_raw\\.', x=names(sims.ind))]),
-        yeareffphi_raw=as.numeric(sims.ind[i, grep('yeareffphi_raw\\.', x=names(sims.ind))])))
+    list(a=as.numeric(sims.ind[i, grep('a\\.', x=names(sims.ind))]),
+         b=sims.ind$b[i], sa2=sims.ind$sa2[i], sm2=sims.ind$sm2[i],
+         st2=sims.ind$st2[i], sf2=sims.ind$sf2[i], se2=sims.ind$se2[i],
+      ua=as.numeric(sims.ind[i, grep('ua\\.', x=names(sims.ind))]),
+      um=as.numeric(sims.ind[i, grep('um\\.', x=names(sims.ind))]),
+      ut=as.numeric(sims.ind[i, grep('ut\\.', x=names(sims.ind))]),
+      uf=as.numeric(sims.ind[i, grep('uf\\.', x=names(sims.ind))])))
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=pars, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
-              Nout=Nout)
+              lambda=lambda.vec, delta=c(.9) , metric=metric,
+              seeds=seeds, Nout=Nout)
 
 message(paste('Finished with model:', m))
 setwd('../..')

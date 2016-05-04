@@ -24,16 +24,28 @@ parameters {
   real a[n_cross];
   real b;
   // hyper variances
-  real sa2;
-  real sm2;
-  real st2;
-  real sf2;
-  real se2;
+  real<lower=0, upper=10> sa2;
+  real<lower=0, upper=10> sm2;
+  real<lower=0, upper=10> st2;
+  real<lower=0, upper=10> sf2;
+  real<lower=0, upper=10> se2;
   // random effects
   real ua[n_animal];
   real um[n_ID];
   real ut[n_Tank_ID];
   real uf[n_Dam];
+}
+
+transformed parameters {
+  // non-centered random effects; implies ua~N(0, sa); etc.
+  real sa;
+  real sm;
+  real st;
+  real sf;
+  sa <- sqrt(sa2);
+  sm <- sqrt(sm2);
+  st <- sqrt(st2);
+  sf <- sqrt(sf2);
 }
 
 model {
@@ -51,16 +63,15 @@ model {
   se2~student_t(2,0,1);		// residual error
 
   // Hyperdistribution
-  ua~normal(0, sqrt(sa2));
-  um~normal(0, sqrt(sm2));
-  ut~normal(0, sqrt(st2));
-  uf~normal(0, sqrt(sf2));
+  ua~normal(0,sa);
+  um~normal(0,sm);
+  ut~normal(0,st);
+  uf~normal(0,sf);
 
-// model predictions and likelihood
-for(i in 1:N){
-  ypred[i] <- a[cross[i]]+ b*days[i]+ ua[animal[i]]+ um[ID[i]]+
-    ut[Tank_ID[i]] +uf[Dam[i]];
-}
+  // model predictions and likelihood
+  for(i in 1:N){
+    ypred[i] <- a[cross[i]]+ b*days[i]+ ua[animal[i]]+ um[ID[i]]+ ut[Tank_ID[i]] +uf[Dam[i]];
+  }
   // likelihood
   body_weight~normal(ypred, sqrt(se2));
 

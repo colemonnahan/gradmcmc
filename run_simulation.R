@@ -76,11 +76,12 @@ m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
 ## quantgene; Example 14.5 from Korner-Nievergelt et al
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 5000; Nthin <- 1; Nthin.ind <- 500
+verify <- FALSE
 m <- 'quantgene_nc'
 source(paste0('models/',m,'/run_model.R'))
-## m <- 'quantgene'
-## source(paste0('models/',m,'/run_model.R'))
+m <- 'quantgene'
+source(paste0('models/',m,'/run_model.R'))
 ### End of Step 1.
 ### ------------------------------------------------------------
 
