@@ -37,5 +37,7 @@ g <- ggplot(adapt_empirical, aes(model, log10(nsteps.median))) + geom_point(alph
 ggsave('plots/adapt_nsteps.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(adapt_empirical, aes(model, max_treedepths)) + geom_point(alpha=.5)
 ggsave('plots/adapt_max_treedepths.png', g, width=ggwidth, height=ggheight)
+g <- ggplot(adapt_empirical, aes(model, ndivergent)) + geom_point(alpha=.5)
+ggsave('plots/adapt_ndivergent.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(adapt_empirical, aes(eps.final, log10(nsteps.mean), color=model)) + geom_point()
 ggsave('plots/adapt_eps_vs_nsteps.png', g, width=ggwidth, height=ggheight)
