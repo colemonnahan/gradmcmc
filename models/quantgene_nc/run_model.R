@@ -21,7 +21,7 @@ sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
 inits <- lapply(1:length(seeds), function(i)
     list(a=as.numeric(sims.ind[i, grep('a\\.', x=names(sims.ind))]),
-         ab=sims.ind$ab[i], sa2=sims.ind$sa2[i], sm2=sims.ind$sm2[i],
+         b=sims.ind$b[i], sa2=sims.ind$sa2[i], sm2=sims.ind$sm2[i],
          st2=sims.ind$st2[i], sf2=sims.ind$sf2[i], se2=sims.ind$se2[i],
       ua_raw=as.numeric(sims.ind[i, grep('ua_raw\\.', x=names(sims.ind))]),
       um_raw=as.numeric(sims.ind[i, grep('um_raw\\.', x=names(sims.ind))]),
@@ -30,13 +30,9 @@ inits <- lapply(1:length(seeds), function(i)
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=pars, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
-              Nout=Nout)
+              lambda=lambda.vec, delta=c(.9) , metric=metric,
+              seeds=seeds, Nout=Nout)
 
 message(paste('Finished with model:', m))
 setwd('../..')
 
-jags(data=data, inits=inits, para=pars, model='quantgene_nc.jags',
-     n.chains=1)
-temp <- stan(data=data, init=inits,  file='quantgene_nc.stan',
-             chains=1, iter=2000)

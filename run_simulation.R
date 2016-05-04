@@ -120,3 +120,10 @@ pairs(test, pars=c('sa2',names.temp))
 acf(sims.stan.nuts[,1, 'sm2'])
 library(shinystan)
 launch_shinystan(test)
+
+
+test <- run.chains(model=m, seeds=1, Nout=100, delta=.9, data=data,
+                   inits=inits, lambda=NULL, params.jags=params.jags)
+fit <- stan(file='mvnd.stan', data=data, chains=1, iter=50,
+            control=list(adapt_delta=.9, max_treedepth=4))
+x <- data.frame(get_sampler_params(fit))
