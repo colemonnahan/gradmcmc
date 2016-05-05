@@ -26,12 +26,14 @@ results.file <- function(file) paste0(main.dir,'results/', file)
 #' @param sink.console Whether to sink console output to trash file to cleanup
 #' console output. Defaults to TRUE. Makes it easier to see the progress on
 #' the console.
+#' @param max_treedepth The maximum times the NUTS algorithm can double
+#' before exiting that iteration. Default is 10 in Stan and this function.
 #' @param metric A vector of metrics to run across for HMC and NUTS. Must
 #' be one of c("unit_e", "diag_e", "dense_e").
 #' @return A list of two data frames. adapt is the adaptive results from
 #' Stan, and perf is the performance metrics for each run.
 run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
-                       metric='diag_e', data, inits, params.jags,
+                       metric='diag_e', data, inits, params.jags, max_treedepth=10,
                        sink.console=TRUE){
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
@@ -88,7 +90,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
                init=inits.seed, seed=seed, par=params.jags,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta,
-                 metric=imetric, max_treedepth=10))
+                 metric=imetric, max_treedepth=max_treedepth))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
         Rhat.stan.nuts <- with(perf.stan.nuts, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
@@ -100,7 +102,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                      delta.mean=mean(adapt.nuts$accept_stat__[ind.samples]),
                      delta.target=idelta,
                      eps.final=tail(adapt.nuts$stepsize__,1),
-                     max_treedepths=sum(adapt.nuts$treedepth__[ind.samples]>10),
+                     max_treedepths=sum(adapt.nuts$treedepth__[ind.samples]>max_treedepth),
                      ndivergent=sum(adapt.nuts$n_divergent__[ind.samples]),
                      nsteps.mean=mean(adapt.nuts$n_leapfrog__[ind.samples]),
                      nsteps.median=median(adapt.nuts$n_leapfrog__[ind.samples]),
@@ -177,14 +179,14 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
 #' Verify models and then run empirical tests across delta
 fit.empirical <- function(model, params.jags, model.jags, inits, data, seeds,
                           delta, lambda, model.stan, Nout,  metric,
-                          Nthin=1, sink.console=TRUE){
+                          Nthin=1, sink.console=TRUE, ...){
     ## Now rerun across gradient of acceptance rates and compare to JAGS
     message('Starting empirical runs')
     results.empirical <-
       run.chains(model=model, seeds=seeds, Nout=Nout, lambda=lambda,
                  metric=metric, delta=delta, data=data,
                  Nthin=Nthin, inits=inits, params.jags=params.jags,
-                 sink.console=sink.console)
+                 sink.console=sink.console, ...)
     with(results.empirical, plot.empirical.results(perf, adapt))
     write.csv(file=results.file(paste0(m, '_adapt_empirical.csv')), results.empirical$adapt)
     write.csv(file=results.file(paste0(m, '_perf_empirical.csv')), results.empirical$perf)

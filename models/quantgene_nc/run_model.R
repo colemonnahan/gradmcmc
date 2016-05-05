@@ -30,8 +30,8 @@ inits <- lapply(1:length(seeds), function(i)
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=pars, inits=inits, data=data,
-              lambda=lambda.vec, delta=c(.9) , metric=metric,
-              seeds=seeds, Nout=Nout)
+              lambda=lambda.vec, delta=delta , metric=metric,
+              seeds=seeds, Nout=Nout, max_treedepth=max_treedepth)
 
 message(paste('Finished with model:', m))
 setwd('../..')

@@ -20,7 +20,7 @@ if(verify)
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
 inits <- lapply(1:length(seeds), function(i)
-    list(a=as.numeric(sims.ind[i, grep('a\\.', x=names(sims.ind))]),
+    list(a=as.numeric(sims.ind[i, grep('^a\\.', x=names(sims.ind))]),
          b=sims.ind$b[i], sa2=sims.ind$sa2[i], sm2=sims.ind$sm2[i],
          st2=sims.ind$st2[i], sf2=sims.ind$sf2[i], se2=sims.ind$se2[i],
       ua=as.numeric(sims.ind[i, grep('ua\\.', x=names(sims.ind))]),
@@ -30,8 +30,8 @@ inits <- lapply(1:length(seeds), function(i)
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=pars, inits=inits, data=data,
-              lambda=lambda.vec, delta=c(.9) , metric=metric,
-              seeds=seeds, Nout=Nout)
+              lambda=lambda.vec, delta=delta , metric=metric,
+              seeds=seeds, Nout=Nout, max_treedepth=max_treedepth)
 
 message(paste('Finished with model:', m))
 setwd('../..')
