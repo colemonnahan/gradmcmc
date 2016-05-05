@@ -40,8 +40,8 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
   model.stan <- paste0(model, '.stan')
   Niter <- Nout*Nthin
   Nwarmup <- Niter/2
-  ind.samples <- (Nwarmup/Nthin+1):Nout    # index of samples, excluding warmup
-  ind.warmup <- 1:(Nwarmup/Nthin)             # index of warmup samples
+  ind.samples <- -(1:Nwarmup)          # index of samples, excluding warmup
+  ind.warmup <- 1:Nwarmup              # index of warmup samples
   perf.list <- list()
   adapt.list <- list()
   k <- 1
