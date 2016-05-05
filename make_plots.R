@@ -41,3 +41,6 @@ g <- ggplot(adapt_empirical, aes(model, ndivergent)) + geom_point(alpha=.5)
 ggsave('plots/adapt_ndivergent.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(adapt_empirical, aes(eps.final, log10(nsteps.mean), color=model)) + geom_point()
 ggsave('plots/adapt_eps_vs_nsteps.png', g, width=ggwidth, height=ggheight)
+
+ggplot(empirical, aes(time.warmup, time.sampling, color=model)) +
+  facet_wrap('platform') + geom_point()

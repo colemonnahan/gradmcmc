@@ -64,7 +64,8 @@ m <- 'ss_logistic_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Red kite example from Kery and Schaub; 8.4 w/ informative prior
-Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 5000; Nthin <- 1; Nthin.ind <- 100
+verify <- FALSE
 m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
 
@@ -123,9 +124,31 @@ acf(sims.stan.nuts[,1, 'sm2'])
 library(shinystan)
 launch_shinystan(test)
 
-
-test <- run.chains(model=m, seeds=1, Nout=100, delta=.9, data=data,
-                   inits=inits, lambda=NULL, params.jags=params.jags)
+## make sure getting ndivergent right
+setwd('models/mvnd')
+Npar <- 5
+covar <- rWishart(n=1, df=Npar, Sigma=diag(Npar))[,,1]
+data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
+inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
+params.jags <- 'mu'
 fit <- stan(file='mvnd.stan', data=data, chains=1, iter=50,
-            control=list(adapt_delta=.9, max_treedepth=4))
+            control=list(adapt_delta=.5, max_treedepth=4))
 x <- data.frame(get_sampler_params(fit))
+sum(x$n_divergent__[-(1:25)])
+test <- run.chains(model='mvnd', seeds=2, Nout=100, delta=.95, data=data,
+                   inits=inits, lambda=NULL, params.jags=params.jags,
+                   max_treedepth=4)
+
+## explore centering vs noncentering of growth
+x <- readRDS('models/growth/sims.ind.RDS')
+y <- readRDS('models/growth_nc/sims.ind.RDS')
+par(mfrow=c(2,2))
+plot(x$logLinf_sigma, x[,'logLinf.1.'])
+plot(x$logk_sigma, x[,'logk.1.'])
+plot(y$logLinf_sigma, y[,'logLinf_raw.1.'])
+plot(y$logk_sigma, y[,'logk_raw.1.'])
+par(mfrow=c(2,2))
+plot(x$logLinf_sigma, x$logLinf_mean)
+plot(x$logk_sigma, x$logk_mean)
+plot(y$logLinf_sigma, y$logLinf_mean)
+plot(y$logk_sigma, y$logk_mean)
