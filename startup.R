@@ -35,6 +35,7 @@ results.file <- function(file) paste0(main.dir,'results/', file)
 run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                        metric='diag_e', data, inits, params.jags, max_treedepth=10,
                        sink.console=TRUE){
+  if(Nthin!=1) stop('this probably breaks if Nthin!=1')
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
   Niter <- Nout*Nthin
@@ -63,18 +64,15 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     temp <- jags(data=data, parameters.to.save=params.jags, inits=inits.seed,
                  model.file=model.jags, n.chains=1, DIC=FALSE,
                  n.iter=100, n.burnin=50, n.thin=1)
-    time.jags.warmup <- as.vector(system.time(temp <-
-      update(temp, n.iter=5, n.burnin=Nwarmup, n.thin=1)))[3]
-    ## Rerun with those tunings to get efficiency
-    time.jags.sampling <-
-      as.vector(system.time(fit.jags <- update(temp, n.iter=Niter, n.thin=Nthin))[3])
+    time.jags <- as.vector(system.time(fit.jags <-
+      update(temp, n.iter=Niter, n.burnin=Nwarmup, n.thin=1)))[3]
     saveRDS(fit.jags, file=paste('jags', seed,'.RDS', sep='_'))
     sims.jags <- fit.jags$BUGSoutput$sims.array
     perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
     Rhat.jags <- with(perf.jags, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
     perf.list[[k]] <-
       data.frame(platform='jags', seed=seed, Npar=dim(sims.jags)[3], delta.target=.5,
-                 time.warmup=time.jags.warmup, time.sampling=time.jags.sampling,
+                 time=time.jags,
                  minESS=min(perf.jags$n_eff), medianESS=median(perf.jags$n_eff),
                  Nsims=dim(sims.jags)[1],
                  minESS.coda=min(coda::effectiveSize(x=sims.jags[,1,])),
@@ -86,12 +84,12 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     ## message('Starting stan.nuts models')
     for(idelta in delta){
       for(imetric in metric){
-        fit.stan.nuts <-
+        time.stan <- as.vector(system.time(fit.stan.nuts <-
           stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
                init=inits.seed, seed=seed, par=params.jags,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta,
-                 metric=imetric, max_treedepth=max_treedepth))
+                 metric=imetric, max_treedepth=max_treedepth))))[3]
         saveRDS(fit.stan.nuts, file=paste('stan_nuts', metric, idelta, seed,'.RDS', sep='_'))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
@@ -115,8 +113,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                      seed=seed, delta.target=idelta, metric=imetric,
                      eps.final=tail(adapt.nuts$stepsize__,1),
                      Npar=dim(sims.stan.nuts)[3]-1,
-                     time.sampling=get_elapsed_time(fit.stan.nuts)[2],
-                     time.warmup=get_elapsed_time(fit.stan.nuts)[1],
+                     time=time.stan,
                      minESS=min(perf.stan.nuts$n_eff),
                      medianESS=median(perf.stan.nuts$n_eff),
                      Nsims=dim(sims.stan.nuts)[1],
@@ -125,53 +122,52 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
         k <- k+1
       }}
     rm(fit.stan.nuts, sims.stan.nuts, perf.stan.nuts, adapt.nuts)
-    if(!is.null(lambda)){
-      for(ilambda in lambda){
-        message(paste0('Starting stan.hmc',ilambda,' models'))
-        for(idelta in delta){
-          for(imetric in metric){
-            fit.stan.hmc <-
-              stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
-                   warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.seed,
-                   par=params.jags, control=list(adapt_engaged=TRUE,
-                                      adapt_delta=idelta, metric=imetric, int_time=ilambda))
-            sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
-            perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
-            Rhat.stan.hmc <- with(perf.stan.hmc, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
-            adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
-            adapt.list[[k]] <-
-              data.frame(platform=paste0('HMC',ilambda), seed=seed,
-                         Npar=dim(sims.stan.hmc)[3]-1,
-                         Nsims=dim(sims.stan.hmc)[1],
-                         delta.target=idelta,
-                         delta.mean=mean(adapt.hmc$accept_stat__[ind.samples]),
-                         eps.final=tail(adapt.hmc$stepsize__,1),
-                         metric=imetric, lambda=ilambda,
-                         L=tail(adapt.hmc$stepsize__,1)*ilambda,
-                         nsteps.mean=tail(adapt.hmc$stepsize__,1)*ilambda)
-            perf.list[[k]] <-
-              data.frame(platform=paste0('stan.hmc',ilambda),
-                         seed=seed, delta.target=idelta, metric=imetric,
-                         Npar=dim(sims.stan.hmc)[3]-1,
-                         time.sampling=get_elapsed_time(fit.stan.hmc)[2],
-                         time.warmup=get_elapsed_time(fit.stan.hmc)[1],
-                         minESS=min(perf.stan.hmc$n_eff),
-                         medianESS=median(perf.stan.hmc$n_eff),
-                         Nsims=dim(sims.stan.hmc)[1],
-                         minESS.coda=min(effectiveSize(as.data.frame(sims.stan.hmc[,1,]))),
-                         Rhat.stan.hmc)
-            k <- k+1
-            rm(fit.stan.hmc, sims.stan.hmc, perf.stan.hmc, adapt.hmc)
-          }
-        }
-      }
-    }
+    ## if(!is.null(lambda)){
+    ##   for(ilambda in lambda){
+    ##     message(paste0('Starting stan.hmc',ilambda,' models'))
+    ##     for(idelta in delta){
+    ##       for(imetric in metric){
+    ##         fit.stan.hmc <-
+    ##           stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
+    ##                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.seed,
+    ##                par=params.jags, control=list(adapt_engaged=TRUE,
+    ##                                   adapt_delta=idelta, metric=imetric, int_time=ilambda))
+    ##         sims.stan.hmc <- extract(fit.stan.hmc, permuted=FALSE)
+    ##         perf.stan.hmc <- data.frame(rstan::monitor(sims=sims.stan.hmc, warmup=0, print=FALSE))
+    ##         Rhat.stan.hmc <- with(perf.stan.hmc, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
+    ##         adapt.hmc <- as.data.frame(get_sampler_params(fit.stan.hmc))
+    ##         adapt.list[[k]] <-
+    ##           data.frame(platform=paste0('HMC',ilambda), seed=seed,
+    ##                      Npar=dim(sims.stan.hmc)[3]-1,
+    ##                      Nsims=dim(sims.stan.hmc)[1],
+    ##                      delta.target=idelta,
+    ##                      delta.mean=mean(adapt.hmc$accept_stat__[ind.samples]),
+    ##                      eps.final=tail(adapt.hmc$stepsize__,1),
+    ##                      metric=imetric, lambda=ilambda,
+    ##                      L=tail(adapt.hmc$stepsize__,1)*ilambda,
+    ##                      nsteps.mean=tail(adapt.hmc$stepsize__,1)*ilambda)
+    ##         perf.list[[k]] <-
+    ##           data.frame(platform=paste0('stan.hmc',ilambda),
+    ##                      seed=seed, delta.target=idelta, metric=imetric,
+    ##                      Npar=dim(sims.stan.hmc)[3]-1,
+    ##                      time.sampling=get_elapsed_time(fit.stan.hmc)[2],
+    ##                      time.warmup=get_elapsed_time(fit.stan.hmc)[1],
+    ##                      minESS=min(perf.stan.hmc$n_eff),
+    ##                      medianESS=median(perf.stan.hmc$n_eff),
+    ##                      Nsims=dim(sims.stan.hmc)[1],
+    ##                      minESS.coda=min(effectiveSize(as.data.frame(sims.stan.hmc[,1,]))),
+    ##                      Rhat.stan.hmc)
+    ##         k <- k+1
+    ##         rm(fit.stan.hmc, sims.stan.hmc, perf.stan.hmc, adapt.hmc)
+    ##       }
+    ##     }
+    ##   }
+    ## }
   }
   perf <- do.call(rbind.fill, perf.list)
   perf <- within(perf, {
-                   time.total <- time.warmup+time.sampling
+                   time.total <- time
                    samples.per.time <- minESS/time.total
-                   samples.per.sampling.time <- minESS/time.sampling
                  })
   adapt <- do.call(rbind.fill, adapt.list[!ldply(adapt.list, is.null)])
   perf$model <- adapt$model <- model
@@ -243,8 +239,7 @@ plot.empirical.results <- function(perf, adapt){
     model.name <- as.character(perf$model[1])
     perf.long <-
       melt(perf, id.vars=c('platform', 'seed', 'delta.target', 'metric'),
-           measure.vars=c('time.warmup', 'time.sampling', 'minESS',
-             'samples.per.time'))
+           measure.vars=c('time', 'minESS', 'samples.per.time'))
     perf.long$seed2 <- as.factor(with(perf.long, paste(seed, metric, sep="_")))
     g <- ggplot(subset(perf.long, platform!='jags'), aes(delta.target, log(value), group=seed2, color=metric))+
       geom_line() + geom_point() + facet_grid(variable~platform, scales='free_y') + xlim(0,1)
