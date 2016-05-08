@@ -65,7 +65,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     jags(data=data, parameters.to.save=params.jags, inits=inits.seed,
          model.file=model.jags, n.chains=1, DIC=FALSE,
          n.iter=Niter, n.burnin=Nwarmup, n.thin=1)))[3]
-    saveRDS(fit.jags, file=paste('jags', seed,'.RDS', sep='_'))
+    saveRDS(fit.jags, file=paste('fits/jags', seed,'.RDS', sep='_'))
     sims.jags <- fit.jags$BUGSoutput$sims.array
     perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
     Rhat.jags <- with(perf.jags, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
@@ -89,7 +89,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
                init=inits.seed, seed=seed, par=params.jags,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta,
                  metric=imetric, max_treedepth=max_treedepth))))[3]
-        saveRDS(fit.stan.nuts, file=paste('stan_nuts', metric, idelta, seed,'.RDS', sep='_'))
+        saveRDS(fit.stan.nuts, file=paste('fits/stan_nuts', metric, idelta, seed,'.RDS', sep='_'))
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
         Rhat.stan.nuts <- with(perf.stan.nuts, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
