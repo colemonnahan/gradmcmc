@@ -67,9 +67,9 @@ m <- 'ss_logistic_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Red kite example from Kery and Schaub; 8.4 w/ informative prior
-Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 5000; Nthin <- 1; Nthin.ind <- 100
 verify <- FALSE
-delta <- 0.8
+delta <- 0.4
 m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
 
@@ -132,16 +132,22 @@ library(shinystan)
 launch_shinystan(test)
 
 ## make sure getting ndivergent right
+setwd(main.dir)
 setwd('models/mvnd')
 Npar <- 5
 covar <- rWishart(n=1, df=Npar, Sigma=diag(Npar))[,,1]
 data <- list(covar=covar, Npar=Npar, x=rep(0, len=Npar))
 inits <- list(list(mu=rnorm(n=Npar, mean=0, sd=sqrt(diag(covar)))/2))
 params.jags <- 'mu'
-fit <- stan(file='mvnd.stan', data=data, chains=1, iter=50,
+fit <- stan(file='mvnd.stan', data=data, chains=1, iter=500, warmup=50,
             control=list(adapt_delta=.5, max_treedepth=4))
 x <- data.frame(get_sampler_params(fit))
-sum(x$n_divergent__[-(1:25)])
+xx <- extract(fit, permuted=FALSE)
+sum(x$n_divergent__[-(1:50)])
+fit2 <- jags(model.file='mvnd.jags', data=data, inits=inits, para=params.jags,
+             n.chains=1, n.iter=5000, n.burnin=2500, n.thin=1)
+y <- fit2$BUGSoutput$sims.matrix
+
 test <- run.chains(model='mvnd', seeds=2, Nout=100, delta=.95, data=data,
                    inits=inits, lambda=NULL, params.jags=params.jags,
                    max_treedepth=4)
@@ -159,3 +165,11 @@ plot(x$logLinf_sigma, x$logLinf_mean)
 plot(x$logk_sigma, x$logk_mean)
 plot(y$logLinf_sigma, y$logLinf_mean)
 plot(y$logk_sigma, y$logk_mean)
+
+setwd('models/redkite/')
+.stan <- readRDS('stan_nuts_diag_e_0.5_1_.RDS')
+x <- data.frame(get_sampler_params(.stan))
+sum(x$n_divergent__[-(1:5000)])
+sum(x$n_divergent__)
+.jags <- readRDS('jags_1_.RDS')
+sims <- .jags$BUGSoutput$sims.array

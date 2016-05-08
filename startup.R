@@ -38,10 +38,10 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
   if(Nthin!=1) stop('this probably breaks if Nthin!=1')
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
-  Niter <- Nout*Nthin/2
-  Nwarmup <- Niter
-  ind.samples <- -(1:Nwarmup)          # index of samples, excluding warmup
-  ind.warmup <- 1:Nwarmup              # index of warmup samples
+  Niter <- Nout*Nthin
+  Nwarmup <- Niter/2
+  ind.warmup <- 1:Nwarmup              # index of samples, excluding warmup
+  ind.samples <- (Nwarmup+1):Niter     # index of warmup samples
   perf.list <- list()
   adapt.list <- list()
   k <- 1
@@ -61,11 +61,10 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     set.seed(seed)
     ## Precompile JAGS model so not in timings
     ## message('Starting JAGS model')
-    temp <- jags(data=data, parameters.to.save=params.jags, inits=inits.seed,
-                 model.file=model.jags, n.chains=1, DIC=FALSE,
-                 n.iter=100, n.burnin=50, n.thin=1)
     time.jags <- as.vector(system.time(fit.jags <-
-      update(temp, n.iter=Niter, n.burnin=Nwarmup, n.thin=1)))[3]
+    jags(data=data, parameters.to.save=params.jags, inits=inits.seed,
+         model.file=model.jags, n.chains=1, DIC=FALSE,
+         n.iter=Niter, n.burnin=Nwarmup, n.thin=1)))[3]
     saveRDS(fit.jags, file=paste('jags', seed,'.RDS', sep='_'))
     sims.jags <- fit.jags$BUGSoutput$sims.array
     perf.jags <- data.frame(rstan::monitor(sims=sims.jags, warmup=0, print=FALSE, probs=.5))
@@ -85,7 +84,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     for(idelta in delta){
       for(imetric in metric){
         time.stan <- as.vector(system.time(fit.stan.nuts <-
-          stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
+          stan(fit=model.stan, data=data, iter=Niter,
                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='NUTS',
                init=inits.seed, seed=seed, par=params.jags,
                control=list(adapt_engaged=TRUE, adapt_delta=idelta,
@@ -128,7 +127,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
     ##     for(idelta in delta){
     ##       for(imetric in metric){
     ##         fit.stan.hmc <-
-    ##           stan(fit=model.stan, data=data, iter=Niter+Nwarmup,
+    ##           stan(fit=model.stan, data=data, iter=Niter,
     ##                warmup=Nwarmup, chains=1, thin=Nthin, algorithm='HMC', seed=seed, init=inits.seed,
     ##                par=params.jags, control=list(adapt_engaged=TRUE,
     ##                                   adapt_delta=idelta, metric=imetric, int_time=ilambda))
