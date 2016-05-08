@@ -14,17 +14,14 @@ source("startup.R")
 Nout.ind <- 1000
 seeds <- c(1:10)
 lambda.vec <- NULL
-delta.vec <- .8 #c(.5, .7, .8, .9, .95)
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
-## Suppress JAGS and Stan output? Useful after debugging to clean up
-## console and judge progress.
+## Suppress JAGS and Stan output to file? Useful after debugging to clean
+## up console and judge progress.
 sink <- TRUE
-.call('get_version', package='rjags')   # JAGS version 4.2.0
 version$version.string                  # R version 3.2.3
 packageVersion('rstan')                 # 2.8.2
 packageVersion('R2jags')                # 0.5.7
 packageVersion('rjags')                 # 4.4
-
 ### End of Step 0.
 ### ------------------------------------------------------------
 
@@ -33,6 +30,7 @@ packageVersion('rjags')                 # 4.4
 ## Run multivariate normal, empirical and simulated
 m <- 'mvnd'
 verify <- FALSE
+delta <- 0.8
 Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
 ## cor is a factor for independent (0) or from wishart (1)
 cor.vec <- c(0,1)
@@ -42,6 +40,7 @@ source(paste0('models/',m,'/run_model.R'))
 ## Run MVN with varying correlations and a fixed Npar
 m <- 'mvnc'
 verify <- FALSE
+delta <- 0.8
 Npar <- 5
 Nout <- 50000; Nthin <- 1; Nthin.ind <- 10
 cor.vec <- c(0, .25, .5, .75, .8, .85, .9, .95, .99, .999)
@@ -49,35 +48,43 @@ Npar.vec <- c(2, 50, 100)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
-Nout <- 100000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 500
 Npar.vec <- c(5,10,50, 100)
+verify <- FALSE
+delta <- 0.8
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
-Nout <- 100000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 500
+verify <- FALSE
+delta <- 0.8
 m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Red kite example from Kery and Schaub; 8.4 w/ informative prior
-Nout <- 5000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
 verify <- FALSE
+delta <- 0.8
 m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
 
 ## swallows; Example 14.5 from Korner-Nievergelt et al
-Nout <- 200000; Nthin <- 1; Nthin.ind <- 100
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 100
+verify <- FALSE
+delta <- .9
 m <- 'swallows_nc'
 source(paste0('models/',m,'/run_model.R'))
+delta <- .9
 m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
 ## quantgene; Example 14.5 from Korner-Nievergelt et al
-Nout <- 10000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 50000; Nthin <- 1; Nthin.ind <- 500
 verify <- FALSE
 max_treedepth <- 12
 m <- 'quantgene_nc'; delta <- .98

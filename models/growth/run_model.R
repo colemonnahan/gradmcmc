@@ -31,6 +31,7 @@ params.jags <-
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
+if(verify)
 verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
               Nout=Nout.ind, Nthin=Nthin.ind, sink=sink)
 
@@ -49,8 +50,9 @@ inits <- lapply(1:length(seeds), function(i)
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              lambda=lambda.vec, delta=delta, metric=metric, seeds=seeds,
               Nout=Nout)
+
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
 adapt.list <- perf.list <- list()
@@ -61,7 +63,7 @@ for(i in seq_along(Npar.vec)){
     set.seed(115)
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
-                       seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
+                       seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL, delta=delta)
     adapt.list[[i]] <- temp$adapt
     perf.list[[i]] <- temp$perf
     ## Save them as we go in case it fails
