@@ -38,8 +38,8 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
   if(Nthin!=1) stop('this probably breaks if Nthin!=1')
   model.jags <- paste0(model, '.jags')
   model.stan <- paste0(model, '.stan')
-  Niter <- Nout*Nthin
-  Nwarmup <- Niter/2
+  Niter <- Nout*Nthin/2
+  Nwarmup <- Niter
   ind.samples <- -(1:Nwarmup)          # index of samples, excluding warmup
   ind.warmup <- 1:Nwarmup              # index of warmup samples
   perf.list <- list()
