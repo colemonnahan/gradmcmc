@@ -42,7 +42,7 @@ inits <- lapply(1:length(seeds), function(i)
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              lambda=lambda.vec, delta=delta, metric=metric, seeds=seeds,
               Nout=Nout)
 
 ### NOT USED!
