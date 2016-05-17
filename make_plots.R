@@ -6,7 +6,7 @@ g <- ggplot(empirical, aes(log(minESS), y=(minESS-minESS.coda)/minESS))  +
     geom_point() + geom_abline(intercept=0,slope=0, col='red') +
       facet_grid(platform~model, scales='free')# + ylim(0,1)+ xlim(0,1)
 ggsave('plots/ESS_comparison.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(empirical, aes(model, y=(minESS/(Nsims/2))))  +
+g <- ggplot(empirical, aes(model, y=(minESS/Nsims)))  +
   geom_point()+ ylim(0,.5) + facet_wrap('platform') +
     theme(axis.text.x = element_text(angle = 90))
 ggsave('plots/ESS_percentages.png', g, width=ggwidth, height=ggheight)
@@ -37,7 +37,7 @@ g <- ggplot(adapt_empirical, aes(model, log10(nsteps.median))) + geom_point(alph
 ggsave('plots/adapt_nsteps.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(adapt_empirical, aes(model, max_treedepths)) + geom_point(alpha=.5)
 ggsave('plots/adapt_max_treedepths.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(adapt_empirical, aes(model, 100*ndivergent/(Nsims/2))) +
+g <- ggplot(adapt_empirical, aes(model, 100*ndivergent/Nsims)) +
     geom_point(alpha=.5) + ylab('Percent diverged transitions')
 ggsave('plots/adapt_ndivergent.png', g, width=ggwidth, height=ggheight)
 g <- ggplot(adapt_empirical, aes(eps.final, log10(nsteps.mean), color=model)) + geom_point()
