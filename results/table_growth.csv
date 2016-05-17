@@ -1,0 +1,13 @@
+"model","Npar","centered","normal","jags","stan.nuts","stan_re"
+"growth",16,"centered","normal",27.2,13.31,0.49
+"growth",26,"centered","normal",14.41,9.24,0.64
+"growth",106,"centered","normal",3.07,7.67,2.5
+"growth",156,"centered","normal",2.22,3.38,1.52
+"growth",206,"centered","normal",1.28,2.93,2.29
+"growth",406,"centered","normal",0.79,1.53,1.94
+"growth_nc",16,"noncentered","normal",14.7,54.51,3.71
+"growth_nc",26,"noncentered","normal",10.33,90.78,8.79
+"growth_nc",106,"noncentered","normal",2.01,14.03,6.98
+"growth_nc",156,"noncentered","normal",1.7,10.85,6.38
+"growth_nc",206,"noncentered","normal",1.05,6.7,6.38
+"growth_nc",406,"noncentered","normal",0.49,3.09,6.31
