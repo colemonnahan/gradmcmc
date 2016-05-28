@@ -11,7 +11,8 @@ params.jags <- 'mu'
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
-verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+if(verify)
+    verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
               Nout=Nout.ind, Nthin=Nthin.ind)
 
 ## Use independent draws from the verify.model output to use for initial
@@ -22,7 +23,7 @@ inits <- lapply(1:length(seeds), function(i) list(mu=as.numeric(sims.ind[i,])))
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              lambda=lambda.vec, delta=delta, metric=metric, seeds=seeds,
               Nout=Nout)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
@@ -39,7 +40,7 @@ for(i in seq_along(Npar.vec)){
     set.seed(115)
     source("generate_data.R")
     temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
-                   seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
+                   seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL, delta=delta)
     adapt.list[[k]] <- cbind(temp$adapt, cor=cor.temp)
     perf.list[[k]] <- cbind(temp$perf, cor=cor.temp)
     ## Save them as we go in case it fails
