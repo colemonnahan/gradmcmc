@@ -11,8 +11,9 @@ params.jags <- 'mu'
 
 ## Get independent samples from each model to make sure they are coded the
 ## same
-verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
-              Nout=Nout.ind, Nthin=Nthin.ind)
+if(verify)
+    verify.models(model=m, params.jags=params.jags, inits=inits, data=data,
+                  Nout=Nout.ind, Nthin=Nthin.ind)
 
 sims.ind <- readRDS(file='sims.ind.RDS')
 sims.ind <- sims.ind[sample(x=1:NROW(sims.ind), size=length(seeds)),]
@@ -20,34 +21,34 @@ inits <- lapply(1:length(seeds), function(i) list(mu=as.numeric(sims.ind[i,])))
 
 ## Fit empirical data with no thinning for efficiency tests
 fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
-              lambda=lambda.vec, delta=delta.vec, metric=metric, seeds=seeds,
+              lambda=lambda.vec, delta=delta, metric=metric, seeds=seeds,
               Nout=Nout)
 
 ## Now loop through model sizes and run for default parameters, using JAGS
 ## and NUTS only.
 adapt.list <- perf.list <- list()
 k <- 1
-for(j in cor.vec){
-  message(paste("======== Starting cor=", j))
-  for(i in seq_along(Npar.vec)){
+for(i in seq_along(Npar.vec)){
     Npar <- Npar.vec[i]
-    ## Reproducible data since seed set inside the function
     message(paste("======== Starting Npar=", Npar))
-    set.seed(115)
-    source("generate_data.R")
-    temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
-                       seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL)
-    adapt.list[[k]] <- cbind(temp$adapt, cor=j)
-    perf.list[[k]] <- cbind(temp$perf, cor=j)
-    ## Save them as we go in case it fails
-    perf <- do.call(rbind, perf.list)
-    adapt <- do.call(rbind, adapt.list)
-    plot.simulated.results(perf, adapt)
-    write.csv(x=perf, file=results.file(paste0(m,'_perf_simulated.csv')))
-    write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
-    rm(temp)
-    k <- k+1
-  }
+    for(j in cor.vec){
+        ## Reproducible data since seed set inside the function
+        message(paste("======== Starting cor=", j))
+        set.seed(115)
+        source("generate_data.R")
+        temp <- run.chains(model=m, inits=inits, params.jags=params.jags, data=data,
+                           seeds=seeds, Nout=Nout, Nthin=1, lambda=NULL, delta=delta)
+        adapt.list[[k]] <- cbind(temp$adapt, cor=j)
+        perf.list[[k]] <- cbind(temp$perf, cor=j)
+        ## Save them as we go in case it fails
+        perf <- do.call(rbind, perf.list)
+        adapt <- do.call(rbind, adapt.list)
+        plot.simulated.results(perf, adapt)
+        write.csv(x=perf, file=results.file(paste0(m,'_perf_simulated.csv')))
+        write.csv(x=adapt, file=results.file(paste0(m,'_adapt_simulated.csv')))
+        rm(temp)
+        k <- k+1
+    }
 }
 message(paste('Finished with model:', m))
 
