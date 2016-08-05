@@ -175,3 +175,18 @@ sum(x$n_divergent__[-(1:5000)])
 sum(x$n_divergent__)
 .jags <- readRDS('jags_1_.RDS')
 sims <- .jags$BUGSoutput$sims.array
+
+## Quick exploration of parallel code
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores())
+Nout.ind=50000; Nthin.ind=10
+xx <- stan(file='redkite.stan', par=params.jags, init=inits, data=data,
+              iter=Nout.ind*Nthin.ind, thin=Nthin.ind, chains=5)
+temp <- extract(xx, permuted=FALSE)
+dim(temp)<- c(dim(temp)[1]*dim(temp)[2], dim(temp)[3])
+sims.stan <- as.data.frame(temp); names(sims.stan) <- params.jags
+
+list2env(data, envir=globalenv())
+yy <- jags.parallel(data=data, parameters.to.save=params.jags, inits=inits,
+           model.file='redkite.jags', n.chains=5, n.iter=50000,
+           n.thin=10)
