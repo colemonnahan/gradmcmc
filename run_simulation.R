@@ -28,6 +28,7 @@ packageVersion('rjags')                 # 4.4
 ### ------------------------------------------------------------
 ### Step 1
 ## Run multivariate normal, empirical and simulated
+
 m <- 'mvnd'
 verify <- FALSE
 delta <- 0.8

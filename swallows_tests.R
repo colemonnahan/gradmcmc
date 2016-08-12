@@ -73,34 +73,54 @@ plot.model.comparisons(sims.stan, sims.jags, perf.platforms)
 
 
 ### Run Stan across a gradient of adapt_delta to see how %divergence changes
-left off here, need to update this code to work across each of the chains
 adapt.list <- perf.list <- list()
-Niter <- 2*100
+Niter <- 2*10000
 Nwarmup <- Niter/2
 ind.warmup <- 1:Nwarmup              # index of samples, excluding warmup
 ind.samples <- (Nwarmup+1):Niter     # index of warmup samples
-ii <- .5
 k <- 1
-stan.swallows.fit <-
-  stan(file='models/swallows/swallows.stan', par=pars.swallows,
-       init=inits.swallows.fn, data=data.swallows, iter=Niter,
-       warmup=Nwarmup, chains=ncores, control=list(adapt_delta=ii))
-sims.stan <- extract(stan.swallows.fit, permuted=FALSE)
-## perf.stan.nuts <- monitor(sims=sims.stan, warmup=0, print=FALSE, probs=.5)
-adapt.nuts <- get_sampler_params(stan.swallows.fit)
-for(i in 1:ncores){
-  temp <- data.frame(adapt.nuts[[i]])
-  adapt.list[[k]] <-
-  data.frame(model='swallows', chain=i,
-             delta.mean=mean(temp$accept_stat__[ind.samples]),
-             delta.target=ii, eps.final=tail(temp$stepsize__,1),
-             ndivergent=sum(temp$n_divergent__[ind.samples]))
-## perf.list[[k]] <-
-##   data.frame(model='swallows', delta.target=ii,
-##              eps.final=tail(adapt.nuts$stepsize__,1),
-##              minESS=min(perf.stan.nuts$n_eff))
-k <- k+1
+for(ii in c(.5,.6,.7,.8,.85, .9, .95, .99)[1:3]) {
+    stan.swallows.fit <-
+        stan(file='models/swallows/swallows.stan', par=pars.swallows,
+             init=inits.swallows.fn, data=data.swallows, iter=Niter,
+             warmup=Nwarmup, chains=ncores, control=list(adapt_delta=ii))
+    sims.stan <- extract(stan.swallows.fit, permuted=FALSE)
+    ## perf.stan.nuts <- monitor(sims=sims.stan, warmup=0, print=FALSE, probs=.5)
+    adapt.nuts <- get_sampler_params(stan.swallows.fit)
+    for(i in 1:ncores){
+        temp <- data.frame(adapt.nuts[[i]])
+        adapt.list[[k]] <-
+            data.frame(model='swallows', chain=i,
+                       delta.mean=mean(temp$accept_stat__[ind.samples]),
+                       delta.target=ii, eps.final=tail(temp$stepsize__,1),
+                       ndivergent=sum(temp$n_divergent__[ind.samples]))
+        ## perf.list[[k]] <-
+        ##   data.frame(model='swallows', delta.target=ii,
+        ##              eps.final=tail(adapt.nuts$stepsize__,1),
+        ##              minESS=min(perf.stan.nuts$n_eff))
+        k <- k+1
+    }
+    stan.swallows_nc.fit <-
+        stan(file='models/swallows_nc/swallows_nc.stan', par=pars.swallows_nc,
+             init=inits.swallows_nc.fn, data=data.swallows_nc, iter=Niter,
+             warmup=Nwarmup, chains=ncores, control=list(adapt_delta=ii))
+    sims.stan <- extract(stan.swallows_nc.fit, permuted=FALSE)
+    ## perf.stan.nuts <- monitor(sims=sims.stan, warmup=0, print=FALSE, probs=.5)
+    adapt.nuts <- get_sampler_params(stan.swallows_nc.fit)
+    for(i in 1:ncores){
+        temp <- data.frame(adapt.nuts[[i]])
+        adapt.list[[k]] <-
+            data.frame(model='swallows_nc', chain=i,
+                       delta.mean=mean(temp$accept_stat__[ind.samples]),
+                       delta.target=ii, eps.final=tail(temp$stepsize__,1),
+                       ndivergent=sum(temp$n_divergent__[ind.samples]))
+        ## perf.list[[k]] <-
+        ##   data.frame(model='swallows_nc', delta.target=ii,
+        ##              eps.final=tail(adapt.nuts$stepsize__,1),
+        ##              minESS=min(perf.stan.nuts$n_eff))
+        k <- k+1
+    }
 }
-k <- k+1
 adapt <- do.call(rbind, adapt.list)
-perf <- do.call(rbind, perf.list)
+ggplot(adapt, aes(delta.target, ndivergent, group=model, color=model)) +
+    geom_point() + geom_line()
