@@ -35,7 +35,7 @@ delta <- 0.8
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 100
 ## cor is a factor for independent (0) or from wishart (1)
 cor.vec <- c(0,1)
-Npar.vec <- c(2, 5, 25, 50, 100, 200)
+Npar.vec <- c(2, 5, 25, 50)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run MVN with varying correlations and a fixed Npar
@@ -50,19 +50,19 @@ source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
-Npar.vec <- c(5,10,50, 75, 100, 200)
+Npar.vec <- c(5,10,50, 75, 100, 150, 200)
 verify <- FALSE
 delta <- 0.95
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
-delta <- .9
+delta <- .8
 m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
 
 ## State space logistic
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
 verify <- FALSE
-delta <- 0.9
+delta <- 0.95
 m <- 'ss_logistic'
 source(paste0('models/',m,'/run_model.R'))
 m <- 'ss_logistic_nc'
@@ -86,14 +86,6 @@ delta <- .9
 m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
-## quantgene; Example 14.5 from Korner-Nievergelt et al
-Nout <- 20000; Nthin <- 1; Nthin.ind <- 1000
-verify <- TRUE
-max_treedepth <- 12
-m <- 'quantgene_nc'; delta <- .98
-source(paste0('models/',m,'/run_model.R'))
-m <- 'quantgene'; delta <- .9
-source(paste0('models/',m,'/run_model.R'))
 ### End of Step 1.
 ### ------------------------------------------------------------
 
