@@ -73,7 +73,7 @@ plot.model.comparisons(sims.stan, sims.jags, perf.platforms)
 
 ### Run Stan across a gradient of adapt_delta to see how %divergence changes
 adapt.list <- perf.list <- list()
-Niter <- 2*5000
+Niter <- 2*10000
 Nwarmup <- Niter/2
 ind.warmup <- 1:Nwarmup              # index of samples, excluding warmup
 ind.samples <- (Nwarmup+1):Niter     # index of warmup samples
@@ -122,6 +122,6 @@ for(ii in c(.8,.85, .9, .95)) {
 }
 adapt <- do.call(rbind, adapt.list)
 saveRDS(adapt, file='swallows_tests/divergence_tests.RDS')
-g <- ggplot(adapt, aes(delta.target, ndivergent, group=model, color=model)) +
-    geom_point() + geom_line()
+g <- ggplot(adapt, aes(delta.target, 100*ndivergent/10000, group=model, color=model)) +
+    geom_jitter() + ylab('% divergent')
 ggsave('swallows_tests/divergence_tests.png', width=ggwidth, height=ggheight)
