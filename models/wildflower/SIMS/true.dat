@@ -1,0 +1,10 @@
+parameter    value
+Intercept  -3.7165722  
+StateF   2.2434320  
+StateL   2.1201512  
+StateM    1.3991434  
+StateS   -0.2310406 
+Pods     -0.1331681 
+plant.int.var  0.46043388 
+plant.pods.var 0.02848101
+year.int.var   5.30597424 

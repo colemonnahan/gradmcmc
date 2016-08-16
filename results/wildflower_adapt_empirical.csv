@@ -1,0 +1,2 @@
+"","platform","seed","Npar","Nsims","delta.mean","delta.target","eps.final","max_treedepths","ndivergent","nsteps.mean","nsteps.median","nsteps.sd","metric","model"
+"1","stan.nuts",1,1101,50,0.90775747045193,0.8,0.0121694625751758,0,0,255,255,0,"diag_e","wildflower"
