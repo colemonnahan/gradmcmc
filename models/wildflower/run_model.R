@@ -20,7 +20,7 @@ inits <-
 df <- with(data, data.frame(year, plant, stage, Pods, toF))
 pairs(df)
 stan.fit <- stan(file='wildflower.stan', data=data, init=inits,
-                 pars=params.jags, iter=100, chains=1)
+                 pars=params.jags, iter=2000, chains=1)
 ## stan.fit <- readRDS('fits/stan_nuts_diag_e_0.8_1_.RDS')
 ## shinystan::launch_shinystan(stan.fit)
 
