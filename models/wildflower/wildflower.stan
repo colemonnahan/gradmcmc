@@ -8,7 +8,7 @@ data {
   int year[Ndata];
   int plant[Ndata];
   int stage[Ndata];
-  int Pods[Ndata];
+  vector[Ndata] Pods;
   int toF[Ndata];
 }
 
@@ -16,26 +16,27 @@ parameters {
   real<lower=0.0001,upper=5> yearInterceptSD;
   real<lower=0.0001,upper=5> plantInterceptSD;
   real<lower=0.0001,upper=5> plantSlopeSD;
-  real intercept[Nstage];
+  vector[Nstage] intercept;
   real slope;
   // Random effect vectors
-  real yearInterceptEffect[Nyear];
-  real plantInterceptEffect[Nplant];
-  real plantSlopeEffect[Nplant];
+  vector[Nyear] yearInterceptEffect;
+  vector[Nplant] plantInterceptEffect;
+  vector[Nplant] plantSlopeEffect;
   }
 
 model {
+  vector[Ndata] ypred;
   yearInterceptEffect ~ normal(0, yearInterceptSD);
   plantInterceptEffect ~ normal(0, plantInterceptSD);
   plantSlopeEffect ~ normal(0, plantSlopeSD);
   // Priors
   slope~normal(0, 100);
   intercept~normal(0, 100);
-  for(i in 1:Ndata) {
-  toF[i]~ bernoulli_logit(
-   intercept[stage[i]] + yearInterceptEffect[year[i]] +
-   plantInterceptEffect[plant[i]] + slope*Pods[i] +
-   plantSlopeEffect[plant[i]] * Pods[i]);
- }
+  ypred= intercept[stage] +
+    yearInterceptEffect[year] +
+    plantInterceptEffect[plant] +
+  Pods*slope +
+    Pods .* plantSlopeEffect[plant];
+  toF ~ bernoulli_logit(ypred);
 }
 
