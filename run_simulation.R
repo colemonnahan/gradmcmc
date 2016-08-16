@@ -71,7 +71,7 @@ source(paste0('models/',m,'/run_model.R'))
 
 ## Red kite example from Kery and Schaub; 8.4 w/ informative prior
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 100
-verify <- FALSE
+verify <- TRUE
 delta <- 0.8
 m <- 'redkite'
 source(paste0('models/',m,'/run_model.R'))
@@ -79,10 +79,10 @@ source(paste0('models/',m,'/run_model.R'))
 ## swallows; Example 14.5 from Korner-Nievergelt et al
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 100
 verify <- FALSE
-delta <- .9
+delta <- .8
 m <- 'swallows_nc'
 source(paste0('models/',m,'/run_model.R'))
-delta <- .9
+delta <- .8
 m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
