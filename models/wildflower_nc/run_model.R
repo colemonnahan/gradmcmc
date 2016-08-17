@@ -6,20 +6,19 @@ setwd(paste0('models/',m))
 data <- readRDS('data.RDS')
 params.jags <-
     c("yearInterceptSD", "plantInterceptSD", "plantSlopeSD", "intercept",
-      "slope", "yearInterceptEffect", "plantSlopeEffect", "plantInterceptEffect")
+      "slope", "yearInterceptEffect_raw", "plantSlopeEffect_raw", "plantInterceptEffect_raw")
 inits <-
     list(list(
         yearInterceptSD = 1,
               plantInterceptSD = 1,
               plantSlopeSD = 1,
               intercept = rep(0,data$Nstage), slope = 0,
-              yearInterceptEffect = rep(0, data$Nyear),
-              plantInterceptEffect = rep(0, data$Nplant),
-              plantSlopeEffect = rep(0, data$Nplant)))
-## stan.fit <- stan(file='wildflower.stan', data=data, init=inits,seed=11,
-##                  pars=params.jags, iter=2000, chains=1)
-## shinystan::launch_shinystan(stan.fit)
-
+              yearInterceptEffect_raw= rep(0, data$Nyear),
+              plantInterceptEffect_raw= rep(0, data$Nplant),
+              plantSlopeEffect_raw= rep(0, data$Nplant)))
+stan.fit <- stan(file='wildflower_nc.stan', data=data, init=inits,seed=11,
+                 pars=params.jags, iter=2000, chains=1)
+shinystan::launch_shinystan(stan.fit)
 ## Get independent samples from each model to make sure they are coded the
 ## same
 if(verify)

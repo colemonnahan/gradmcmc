@@ -90,8 +90,8 @@ source(paste0('models/',m,'/run_model.R'))
 Nout <- 2000; Nthin <- 1; Nthin.ind <- 500
 verify <- TRUE
 delta <- .8
-## m <- 'wildflower_nc'
-## source(paste0('models/',m,'/run_model.R'))
+m <- 'wildflower_nc'
+source(paste0('models/',m,'/run_model.R'))
 delta <- .8
 m <- 'wildflower'
 source(paste0('models/',m,'/run_model.R'))
