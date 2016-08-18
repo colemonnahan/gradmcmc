@@ -1,5 +1,3 @@
- // Taken from https://github.com/stan-dev/example-models/blob/master/BPA/Ch.08/mr_mnl_age3.stan
-
 data {
   int Ndata;
   int Nstage;
@@ -36,11 +34,11 @@ model {
   plantSlopeSD~normal(0,2);
   slope~normal(0, 100);
   intercept~normal(0, 100);
+  // vectorized prediction
   ypred= intercept[stage] +
     yearInterceptEffect[year] +
     plantInterceptEffect[plant] +
-  Pods*slope +
-    Pods .* plantSlopeEffect[plant];
+  Pods*slope + Pods .* plantSlopeEffect[plant];
   toF ~ bernoulli_logit(ypred);
 }
 

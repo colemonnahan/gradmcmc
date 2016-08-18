@@ -24,6 +24,7 @@ parameters {
 
 model {
   vector[Ndata] ypred;
+  // noncentered random effects; implies N(0,SD) below
   yearInterceptEffect_raw ~ normal(0, 1);
   plantInterceptEffect_raw ~ normal(0, 1);
   plantSlopeEffect_raw ~ normal(0, 1);
