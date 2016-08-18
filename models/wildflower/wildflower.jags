@@ -1,0 +1,37 @@
+
+model {
+
+ # Priors for random effects precisions
+ yearInterceptSD ~  dunif(0.0001, 5)
+ plantInterceptSD ~ dunif(0.0001, 5)
+ plantSlopeSD ~     dunif(0.0001, 5)
+
+ yearInterceptPrecision <- 1/(yearInterceptSD * yearInterceptSD)
+ plantInterceptPrecision <- 1/(plantInterceptSD * plantInterceptSD)
+ plantSlopePrecision <- 1/(plantSlopeSD * plantSlopeSD)
+
+ for (i in 1:Nstage) {
+  intercept[i] ~ dnorm(0, 1/(100*100))
+ }
+ # Prior for slope
+ slope ~ dnorm(0, 1/(100*100))
+
+ ## random year effects:
+ for (i in 1:Nyear) {
+   yearInterceptEffect[i] ~ dnorm(0, 1)
+ }
+ ## random plant effects:
+ for (i in 1:Nplant) {
+   plantInterceptEffect[i] ~ dnorm(0, 1)
+   plantSlopeEffect[i] ~ dnorm(0, 1)
+ }
+ ## logit model and data:
+ for(i in 1:Ndata) {
+   logit(probF[i]) <- intercept[ stage[i] ] +
+                   yearInterceptEffect[ year[i] ] +
+                   plantInterceptEffect[ plant[i] ] +
+                   slope * Pods[i] +
+                   plantSlopeEffect[ plant[i] ] * Pods[i]
+   toF[i] ~ dbern(probF[i])
+ }
+}
