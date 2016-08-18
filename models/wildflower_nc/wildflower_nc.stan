@@ -1,5 +1,3 @@
- // Taken from https://github.com/stan-dev/example-models/blob/master/BPA/Ch.08/mr_mnl_age3.stan
-
 data {
   int Ndata;
   int Nstage;

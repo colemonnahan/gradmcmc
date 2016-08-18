@@ -86,9 +86,9 @@ delta <- .8
 m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
-## swallows; Example 14.5 from Korner-Nievergelt et al
-Nout <- 2000; Nthin <- 1; Nthin.ind <- 500
-verify <- TRUE
+## Wildflower; from Bolker et al 2010
+Nout <- 1000; Nthin <- 1; Nthin.ind <- 500
+verify <- FALSE
 delta <- .8
 m <- 'wildflower_nc'
 source(paste0('models/',m,'/run_model.R'))
