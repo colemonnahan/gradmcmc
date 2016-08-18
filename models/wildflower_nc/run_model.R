@@ -16,9 +16,15 @@ inits <-
               yearInterceptEffect_raw= rep(0, data$Nyear),
               plantInterceptEffect_raw= rep(0, data$Nplant),
               plantSlopeEffect_raw= rep(0, data$Nplant)))
+
 ## stan.fit <- stan(file='wildflower_nc.stan', data=data, init=inits,seed=11,
-##                  pars=params.jags, iter=2000, chains=1)
+##                  pars=params.jags, iter=1000, chains=1)
 ## shinystan::launch_shinystan(stan.fit)
+## jags.fit <- jags(data=data, inits=inits, parameters.to.save=params.jags,
+##                  model.file='wildflower_nc.jags', n.chains=1, n.iter=2000)
+## jags.sims <- shinystan::as.shinystan(jags.sims)
+## shinystan::launch_shinystan(jags.sims)
+
 ## Get independent samples from each model to make sure they are coded the
 ## same
 if(verify)
