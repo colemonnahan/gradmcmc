@@ -29,9 +29,9 @@ model {
   plantInterceptEffect ~ normal(0, plantInterceptSD);
   plantSlopeEffect ~ normal(0, plantSlopeSD);
   // Priors
-  yearInterceptSD~normal(0,2);
-  plantInterceptSD~normal(0,2);
-  plantSlopeSD~normal(0,2);
+  yearInterceptSD~normal(0,10);
+  plantInterceptSD~normal(0,10);
+  plantSlopeSD~normal(0,10);
   slope~normal(0, 100);
   intercept~normal(0, 100);
   // vectorized prediction
