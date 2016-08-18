@@ -13,9 +13,9 @@ data {
 }
 
 parameters {
-  real<lower=0.0001,upper=5> yearInterceptSD;
-  real<lower=0.0001,upper=5> plantInterceptSD;
-  real<lower=0.0001,upper=5> plantSlopeSD;
+  real<lower=0> yearInterceptSD;
+  real<lower=0> plantInterceptSD;
+  real<lower=0> plantSlopeSD;
   vector[Nstage] intercept;
   real slope;
   // Random effect vectors
@@ -26,10 +26,13 @@ parameters {
 
 model {
   vector[Ndata] ypred;
-  yearInterceptEffect_raw ~ normal(0, yearInterceptSD);
-  plantInterceptEffect_raw ~ normal(0, plantInterceptSD);
-  plantSlopeEffect_raw ~ normal(0, plantSlopeSD);
+  yearInterceptEffect_raw ~ normal(0, 1);
+  plantInterceptEffect_raw ~ normal(0, 1);
+  plantSlopeEffect_raw ~ normal(0, 1);
   // Priors
+yearInterceptSD~normal(0,2);
+  plantInterceptSD~normal(0,2);
+  plantSlopeSD~normal(0,2);
   slope~normal(0, 100);
   intercept~normal(0, 100);
   ypred= intercept[stage] +
