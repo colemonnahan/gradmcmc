@@ -93,19 +93,19 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
         sims.stan.nuts <- extract(fit.stan.nuts, permuted=FALSE)
         perf.stan.nuts <- data.frame(monitor(sims=sims.stan.nuts, warmup=0, print=FALSE, probs=.5))
         Rhat.stan.nuts <- with(perf.stan.nuts, data.frame(Rhat.min=min(Rhat), Rhat.max=max(Rhat), Rhat.median=median(Rhat)))
-        adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts))
+        adapt.nuts <- as.data.frame(get_sampler_params(fit.stan.nuts, inc_warmup=FALSE))
         adapt.list[[k]] <-
           data.frame(platform='stan.nuts', seed=seed,
                      Npar=dim(sims.stan.nuts)[3]-1,
                      Nsims=dim(sims.stan.nuts)[1],
-                     delta.mean=mean(adapt.nuts$accept_stat__[ind.samples]),
+                     delta.mean=mean(adapt.nuts$accept_stat__),
                      delta.target=idelta,
                      eps.final=tail(adapt.nuts$stepsize__,1),
-                     max_treedepths=sum(adapt.nuts$treedepth__[ind.samples]>max_treedepth),
-                     ndivergent=sum(adapt.nuts$n_divergent__[ind.samples]),
-                     nsteps.mean=mean(adapt.nuts$n_leapfrog__[ind.samples]),
-                     nsteps.median=median(adapt.nuts$n_leapfrog__[ind.samples]),
-                     nsteps.sd=sd(adapt.nuts$n_leapfrog__[ind.samples]),
+                     max_treedepths=sum(adapt.nuts$treedepth__>max_treedepth),
+                     ndivergent=sum(adapt.nuts$divergent__),
+                     nsteps.mean=mean(adapt.nuts$n_leapfrog__),
+                     nsteps.median=median(adapt.nuts$n_leapfrog__),
+                     nsteps.sd=sd(adapt.nuts$n_leapfrog__),
                      metric=imetric)
         perf.list[[k]] <-
           data.frame(platform='stan.nuts',
