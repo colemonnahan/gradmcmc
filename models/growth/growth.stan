@@ -1,38 +1,38 @@
 data {
   int<lower=0> Nfish; // number of groups
   int<lower=0> Nobs;   // number of observations
-  real loglengths[Nobs];  // observed log cpue
+  vector[Nobs] loglengths;  // observed log cpue
   int fish[Nobs];      // vector to index fish
   int ages[Nobs];      // observed ages
 }
 parameters {
   // fixed effects
   real<lower=0, upper=5> delta;
-  real<lower=0, upper=2> sigma_obs; // data on log scale
+  real<lower=0> sigma_obs; // data on log scale
 
   // hyperparameters with bounds
   real<lower=-5, upper=5> logLinf_mean;
   real<lower=-5, upper=5> logk_mean;
-  real<lower=0, upper=2> logLinf_sigma;
-  real<lower=0, upper=2> logk_sigma;
+  real<lower=0> logLinf_sigma;
+  real<lower=0> logk_sigma;
 
   // random effects
-  real<lower=-10, upper=10> logLinf[Nfish];
-  real<lower=-10, upper=10> logk[Nfish];
+  vector[Nfish] logLinf;
+  vector[Nfish] logk;
 }
 
 model {
+  vector[Nobs] ypred;
   real Linf;
   real k;
-  real ypred[Nobs];
 
   // priors
   // delta is uniform above
-  sigma_obs~cauchy(0,2);
+  sigma_obs~cauchy(0,5);
 
   // hyperpriors
-  logLinf_sigma~cauchy(0,2);
-  logk_sigma~cauchy(0,2);
+  logLinf_sigma~cauchy(0,5);
+  logk_sigma~cauchy(0,5);
   // hyper means are uniform above
 
   // random effects

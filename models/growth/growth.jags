@@ -1,13 +1,13 @@
 model{
 ##	priors
     delta~dunif(0,5)
-	sigma_obs~dt(0,1/(2^2),1)I(0,2) 	## implies half-cauchy with scale of 5
-    
+	sigma_obs~dt(0,1/(5^2),1)I(0,) 	## implies half-cauchy with scale of 5
+
 	## hyperpriors
     logLinf_mean~dunif(-5,5)
-    logLinf_sigma~dt(0, 1/(2^2),1)I(0,2)
+    logLinf_sigma~dt(0, 1/(5^2),1)I(0,)
     logk_mean~dunif(-5,5)
-    logk_sigma~dt(0,1/(2^2),1)I(0,2)
+    logk_sigma~dt(0,1/(5^2),1)I(0,)
 
     ## Loop through the hyperparameters (on group) and calculate
     ## probabilities
@@ -15,7 +15,7 @@ model{
         logLinf[i]~dnorm(logLinf_mean, pow(logLinf_sigma, -2))
         logk[i]~dnorm(logk_mean, pow(logk_sigma, -2))
     }
-	
+
     ## Loop through observations and calculate likelihood
     for(i in 1:Nobs){
         Linf[i] <- exp(logLinf[fish[i]])
