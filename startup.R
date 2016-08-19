@@ -212,9 +212,12 @@ plot.simulated.results <- function(perf, adapt){
             geom_line(data=perf.long, aes(Npar, log(mean.value))) +
                 facet_wrap('variable') + ggtitle("Performance Comparison")
     ggsave(paste0('plots/', model.name, '_perf_simulated.png'), g, width=ggwidth, height=ggheight)
+    adapt$pct.divergent <- with(adapt, ndivergent/Nsims)
+    adapt$pct.max.treedepths <- with(adapt, max_treedepths/Nsims)
     adapt.long <- melt(adapt,
                       id.vars=c('model', 'platform', 'seed', 'Npar', 'Nsims'),
-                      measure.vars=c('delta.mean', 'eps.final'))
+                      measure.vars=c('delta.mean', 'eps.final',
+                                     'pct.divergent', 'pct.max.treedepths'))
     adapt.long <- ddply(adapt.long, .(platform, Npar, variable), mutate,
                        mean.value=mean(value))
     g <- ggplot(adapt.long, aes(Npar, value, group=platform, color=platform)) +
