@@ -18,12 +18,12 @@ model {
 
  ## random year effects:
  for (i in 1:Nyear) {
-   yearInterceptEffect[i] ~ dnorm(0, 1)
+   yearInterceptEffect[i] ~ dnorm(0, yearInterceptPrecision)
  }
  ## random plant effects:
  for (i in 1:Nplant) {
-   plantInterceptEffect[i] ~ dnorm(0, 1)
-   plantSlopeEffect[i] ~ dnorm(0, 1)
+   plantInterceptEffect[i] ~ dnorm(0, plantInterceptPrecision)
+   plantSlopeEffect[i] ~ dnorm(0, plantSlopePrecision)
  }
  ## logit model and data:
  for(i in 1:Ndata) {
