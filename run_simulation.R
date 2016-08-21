@@ -50,12 +50,12 @@ source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
-Npar.vec <- c(5,10,50, 75, 100, 150, 200)
+Npar.vec <- c(1:10, floor(10^(seq(1.25, 3, by=.25))))
 verify <- FALSE
-delta <- 0.95
+delta <- 0.8
 m <- 'growth'
 source(paste0('models/',m,'/run_model.R'))
-delta <- .8
+delta <- 0.8
 m <- 'growth_nc'
 source(paste0('models/',m,'/run_model.R'))
 
