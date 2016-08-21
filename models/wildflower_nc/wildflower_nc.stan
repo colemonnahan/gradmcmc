@@ -29,11 +29,11 @@ model {
   plantInterceptEffect_raw ~ normal(0, 1);
   plantSlopeEffect_raw ~ normal(0, 1);
   // Priors
-yearInterceptSD~normal(0,10);
-  plantInterceptSD~normal(0,10);
-  plantSlopeSD~normal(0,10);
-  slope~normal(0, 100);
-  intercept~normal(0, 100);
+  yearInterceptSD~normal(0,5);
+  plantInterceptSD~normal(0,5);
+  plantSlopeSD~normal(0,5);
+  slope~normal(0, 10);
+  intercept~normal(0, 10);
   ypred= intercept[stage] +
     yearInterceptEffect_raw[year]*yearInterceptSD +
     plantInterceptEffect_raw[plant]*plantInterceptSD +

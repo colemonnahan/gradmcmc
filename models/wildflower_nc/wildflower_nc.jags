@@ -2,15 +2,15 @@
 model {
 
   ## Priors for random effects precisions
-  yearInterceptSD ~  dnorm(0,1/(10*10))I(0,)
-  plantInterceptSD ~ dnorm(0,1/(10*10))I(0,)
-  plantSlopeSD ~  dnorm(0,1/(10*10))I(0,)
+  yearInterceptSD ~  dnorm(0,1/(5*5))I(0,)
+  plantInterceptSD ~ dnorm(0,1/(5*5))I(0,)
+  plantSlopeSD ~  dnorm(0,1/(5*5))I(0,)
 
   for (i in 1:Nstage) {
-    intercept[i] ~ dnorm(0, 1/(100*100))
+    intercept[i] ~ dnorm(0, 1/(10*10))
   }
   ## Prior for slope
-  slope ~ dnorm(0, 1/(100*100))
+  slope ~ dnorm(0, 1/(10*10))
 
   ## non centered random  effects; implies N(0,precision) below
   for (i in 1:Nyear) {
