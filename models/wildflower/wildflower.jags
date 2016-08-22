@@ -1,37 +1,35 @@
-
 model {
+  ## Priors for random effects variances
+  yearInterceptSD ~  dt(0,1/(5^2),1)I(0,) 	## implies half-cauchy with scale of 5
+  plantInterceptSD ~ dt(0,1/(5^2),1)I(0,)
+  plantSlopeSD ~  dt(0,1/(5^2),1)I(0,)
 
- # Priors for random effects precisions
-  yearInterceptSD ~  dnorm(0,1/(10*10))I(0,)
-  plantInterceptSD ~ dnorm(0,1/(10*10))I(0,)
-  plantSlopeSD ~  dnorm(0,1/(10*10))I(0,)
+  yearInterceptPrecision <- 1/(yearInterceptSD * yearInterceptSD)
+  plantInterceptPrecision <- 1/(plantInterceptSD * plantInterceptSD)
+  plantSlopePrecision <- 1/(plantSlopeSD * plantSlopeSD)
 
- yearInterceptPrecision <- 1/(yearInterceptSD * yearInterceptSD)
- plantInterceptPrecision <- 1/(plantInterceptSD * plantInterceptSD)
- plantSlopePrecision <- 1/(plantSlopeSD * plantSlopeSD)
+  for (i in 1:Nstage) {
+    intercept[i] ~ dnorm(0, 1/(10*10))
+  }
+  ## Prior for slope
+  slope ~ dnorm(0, 1/(10*10))
 
- for (i in 1:Nstage) {
-  intercept[i] ~ dnorm(0, 1/(100*100))
- }
- # Prior for slope
- slope ~ dnorm(0, 1/(100*100))
-
- ## random year effects:
- for (i in 1:Nyear) {
-   yearInterceptEffect[i] ~ dnorm(0, yearInterceptPrecision)
- }
- ## random plant effects:
- for (i in 1:Nplant) {
-   plantInterceptEffect[i] ~ dnorm(0, plantInterceptPrecision)
-   plantSlopeEffect[i] ~ dnorm(0, plantSlopePrecision)
- }
- ## logit model and data:
- for(i in 1:Ndata) {
-   logit(probF[i]) <- intercept[ stage[i] ] +
-                   yearInterceptEffect[ year[i] ] +
-                   plantInterceptEffect[ plant[i] ] +
-                   slope * Pods[i] +
-                   plantSlopeEffect[ plant[i] ] * Pods[i]
-   toF[i] ~ dbern(probF[i])
- }
+  ## random year effects:
+  for (i in 1:Nyear) {
+    yearInterceptEffect[i] ~ dnorm(0, yearInterceptPrecision)
+  }
+  ## random plant effects:
+  for (i in 1:Nplant) {
+    plantInterceptEffect[i] ~ dnorm(0, plantInterceptPrecision)
+    plantSlopeEffect[i] ~ dnorm(0, plantSlopePrecision)
+  }
+  ## logit model and data:
+  for(i in 1:Ndata) {
+    logit(probF[i]) <- intercept[ stage[i] ] +
+      yearInterceptEffect[ year[i] ] +
+        plantInterceptEffect[ plant[i] ] +
+          slope * Pods[i] +
+            plantSlopeEffect[ plant[i] ] * Pods[i]
+    toF[i] ~ dbern(probF[i])
+  }
 }

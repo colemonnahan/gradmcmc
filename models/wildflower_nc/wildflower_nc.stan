@@ -20,7 +20,7 @@ parameters {
   vector[Nyear] yearInterceptEffect_raw;
   vector[Nplant] plantInterceptEffect_raw;
   vector[Nplant] plantSlopeEffect_raw;
-  }
+}
 
 model {
   vector[Ndata] ypred;
@@ -29,11 +29,11 @@ model {
   plantInterceptEffect_raw ~ normal(0, 1);
   plantSlopeEffect_raw ~ normal(0, 1);
   // Priors
-yearInterceptSD~normal(0,10);
-  plantInterceptSD~normal(0,10);
-  plantSlopeSD~normal(0,10);
-  slope~normal(0, 100);
-  intercept~normal(0, 100);
+  yearInterceptSD~cauchy(0,5);
+  plantInterceptSD~cauchy(0,5);
+  plantSlopeSD~cauchy(0,5);
+  slope~normal(0, 10);
+  intercept~normal(0, 10);
   ypred= intercept[stage] +
     yearInterceptEffect_raw[year]*yearInterceptSD +
     plantInterceptEffect_raw[plant]*plantInterceptSD +
