@@ -41,9 +41,9 @@ model {
 
   // calculate likelihood of data
    for(i in 1:Nobs){
-    Linf <- exp(logLinf[fish[i]]);
-    k <- exp(logk[fish[i]]);
-    ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
+    Linf = exp(logLinf[fish[i]]);
+    k = exp(logk[fish[i]]);
+    ypred[i] = log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
    }
   loglengths~normal(ypred, sigma_obs);
 }
