@@ -164,7 +164,7 @@ iter <- 20000
 temp <- stan(file='models/growth/growth.stan', data=data, pars=pars,
              chains=1, iter=1)
 growth.fit <- stan(fit=temp, data=data, pars=pars, init=inits, iter=iter,
-                   chains=1, control=list(adapt_delta=.9))
+                   chains=1, control=list(adapt_delta=.95))
 growth.sims <- data.frame(extract(growth.fit, permuted=FALSE)[,1,])
 growth.divergent <- data.frame(get_sampler_params(growth.fit, inc_warmup=FALSE))
 ## Noncentered model
@@ -178,7 +178,7 @@ pars <-
 tempnc <- stan(file='models/growth_nc/growth_nc.stan', data=data, pars=pars,
              chains=1, iter=1)
 growth_nc.fit <- stan(fit=tempnc, data=data, pars=pars, init=inits,
-             iter=iter, chains=1, control=list(adapt_delta=.9))
+             iter=iter, chains=1, control=list(adapt_delta=.8))
 growth_nc.sims <- data.frame(extract(growth_nc.fit, permuted=FALSE)[,1,])
 growth_nc.divergent <- data.frame(get_sampler_params(growth_nc.fit, inc_warmup=FALSE))
 xx <- data.frame(sigma=growth.sims$logLinf_sigma, tau=growth.sims$logLinf.1.-growth.sims$logLinf_mean,
