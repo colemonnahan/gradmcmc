@@ -25,8 +25,8 @@ transformed parameters {
   // non-centered random effects, implies logk~N(logk_mean, logk_sigma) etc.
   vector[Nfish] logLinf;
   vector[Nfish] logk;
-  logLinf <- logLinf_mean+logLinf_raw*logLinf_sigma;
-  logk <- logk_mean+logk_raw*logk_sigma;
+  logLinf = logLinf_mean+logLinf_raw*logLinf_sigma;
+  logk = logk_mean+logk_raw*logk_sigma;
 }
 
 model {
@@ -49,9 +49,9 @@ model {
 
   // calculate likelihood of data
   for(i in 1:Nobs){
-    Linf  <- exp(logLinf[fish[i]]);
-    k <- exp(logk[fish[i]]);
-    ypred[i] <- log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
+    Linf  = exp(logLinf[fish[i]]);
+    k = exp(logk[fish[i]]);
+    ypred[i] = log( Linf*(1-exp(-k*(ages[i]-5)))^delta );
   }
   loglengths~normal(ypred, sigma_obs);
 }

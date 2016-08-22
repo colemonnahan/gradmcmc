@@ -40,25 +40,25 @@ transformed parameters {
   for(i in 1:I){ ## loop over each individual
     // calculate phi as a function of fixed and random effects
     for(t in 1:(K-1)) {
-      phi[i,t] <- inv_logit(a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi_raw[year[i]]+
+      phi[i,t] = inv_logit(a[t]+ a1*carez[i]+ sigmayearphi*yeareffphi_raw[year[i]]+
 			    sigmaphi*fameffphi_raw[family[i]]);
     }
     // calculate p as a function of fixed and random effectsa
-    p[i,1] <- 1;  // first occasion is marking occasion
+    p[i,1] = 1;  // first occasion is marking occasion
     for(t in 2:K){
-      p[i,t] <- inv_logit(b0[year[i]] + b1[year[i]]*agec[t]+
+      p[i,t] = inv_logit(b0[year[i]] + b1[year[i]]*agec[t]+
 			  sigmap*fameffp_raw[family[i]]);
     }
     // probabilitiy of never being seen after last observation. ind here is
     // a reverse index so this loop goes from K:2, recursively calculating
     // backward.
-    chi[i,K+1] <- 1.0;
-    k <- K;
+    chi[i,K+1] = 1.0;
+    k = K;
     while (k > 1) {
-      chi[i,k] <- (1 - phi[i,k-1]) + phi[i,k-1] * (1 - p[i,k]) * chi[i,k+1];
-      k <- k - 1;
+      chi[i,k] = (1 - phi[i,k-1]) + phi[i,k-1] * (1 - p[i,k]) * chi[i,k+1];
+      k = k - 1;
     }
-    chi[i,1] <- (1 - p[i,1]) * chi[i,2];
+    chi[i,1] = (1 - p[i,1]) * chi[i,2];
   }
   }
 }
