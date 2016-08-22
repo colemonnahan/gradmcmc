@@ -24,9 +24,9 @@ model {
   for(i in 1:Ndata) {
     logit(probF[i]) <- intercept[ stage[i] ] +
       yearInterceptEffect_raw[ year[i]]*yearInterceptSD +
-        plantInterceptEffect_raw[plant[i]]*plantInterceptSD +
-          (plantSlopeEffect_raw[plant[i]]*plantSlopeSD)*Pods[i]+
-            slope * Pods[i]
+      plantInterceptEffect_raw[plant[i]]*plantInterceptSD +
+      (plantSlopeEffect_raw[plant[i]]*plantSlopeSD)*Pods[i]+
+      slope * Pods[i]
     toF[i] ~ dbern(probF[i])
   }
 }

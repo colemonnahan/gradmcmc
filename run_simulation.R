@@ -50,7 +50,7 @@ source(paste0('models/',m,'/run_model.R'))
 
 ## Run growth tests, cross between centered/noncentered
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
-Npar.vec <- c(1:10, floor(10^(seq(1.25, 3, by=.25))))
+Npar.vec <- c(2:10, floor(10^(seq(1.25, 2.5, by=.25))))
 verify <- FALSE
 delta <- 0.8
 m <- 'growth'
@@ -139,53 +139,3 @@ plot(x$logLinf_sigma, x$logLinf_mean)
 plot(x$logk_sigma, x$logk_mean)
 plot(y$logLinf_sigma, y$logLinf_mean)
 plot(y$logk_sigma, y$logk_mean)
-
-
-## Special runs of growth model to show divergences and effect of
-## noncentering
-logLinf.mean <- log(50); logk.mean <- log(.1); t0 <- 6; logLinf.sigma <- .1; logk.sigma <- .2; Ntime <- 40; sigma.obs <- .1
-Nfish <- 10
-set.seed(115)
-dat <- sample.lengths(Nfish=Nfish, n.ages=5, logLinf.mean=logLinf.mean,
-                           logLinf.sigma=logLinf.sigma, logk.mean=logk.mean,
-                           logk.sigma=logk.sigma, sigma.obs=sigma.obs, t0=t0)
-g <- ggplot(dat, aes(ages, loglengths, group=fish, color=fish)) +
-    geom_point(alpha=.5) + geom_line()
-data <- list(Nfish=Nfish, Nobs=nrow(dat), loglengths=dat$loglengths,
-                  fish=dat$fish, ages=dat$ages)
-inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
-                  logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
-                  logLinf=rep(logLinf.mean, len=Nfish),
-                  logk=rep(logk.mean, len=Nfish), delta=1))
-pars <-
-  c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma", "logk", "logLinf",
-    "sigma_obs", "delta")
-iter <- 20000
-temp <- stan(file='models/growth/growth.stan', data=data, pars=pars,
-             chains=1, iter=1)
-growth.fit <- stan(fit=temp, data=data, pars=pars, init=inits, iter=iter,
-                   chains=1, control=list(adapt_delta=.95))
-growth.sims <- data.frame(extract(growth.fit, permuted=FALSE)[,1,])
-growth.divergent <- data.frame(get_sampler_params(growth.fit, inc_warmup=FALSE))
-## Noncentered model
-inits <- list(list(logLinf_mean=logLinf.mean, logLinf_sigma=logLinf.sigma,
-                  logk_mean=logk.mean, logk_sigma=logk.sigma, sigma_obs=sigma.obs,
-                  logLinf_raw=rep(0, len=Nfish),
-                  logk_raw=rep(0, len=Nfish), delta=1))
-pars <-
-    c("logLinf_mean", "logLinf_sigma", "logk_mean", "logk_sigma",
-      "sigma_obs", "logk_raw","logLinf_raw", "delta")
-tempnc <- stan(file='models/growth_nc/growth_nc.stan', data=data, pars=pars,
-             chains=1, iter=1)
-growth_nc.fit <- stan(fit=tempnc, data=data, pars=pars, init=inits,
-             iter=iter, chains=1, control=list(adapt_delta=.8))
-growth_nc.sims <- data.frame(extract(growth_nc.fit, permuted=FALSE)[,1,])
-growth_nc.divergent <- data.frame(get_sampler_params(growth_nc.fit, inc_warmup=FALSE))
-xx <- data.frame(sigma=growth.sims$logLinf_sigma, tau=growth.sims$logLinf.1.-growth.sims$logLinf_mean,
-            divergent=growth.divergent$divergent__)
-yy <- data.frame(sigma=growth_nc.sims$logLinf_sigma, tau=growth_nc.sims$logLinf_raw.1.,
-            divergent=growth_nc.divergent$divergent__)
-## Save to results and then plot them elsewhere
-saveRDS(xx, file='results/growth_divergences.RDS')
-saveRDS(yy, file='results/growth_nc_divergences.RDS')
-### ENd of growth divergence
