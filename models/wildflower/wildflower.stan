@@ -20,7 +20,7 @@ parameters {
   vector[Nyear] yearInterceptEffect;
   vector[Nplant] plantInterceptEffect;
   vector[Nplant] plantSlopeEffect;
-  }
+}
 
 model {
   vector[Ndata] ypred;
@@ -29,16 +29,16 @@ model {
   plantInterceptEffect ~ normal(0, plantInterceptSD);
   plantSlopeEffect ~ normal(0, plantSlopeSD);
   // Priors
-  yearInterceptSD~normal(0,10);
-  plantInterceptSD~normal(0,10);
-  plantSlopeSD~normal(0,10);
-  slope~normal(0, 100);
-  intercept~normal(0, 100);
+  yearInterceptSD~cauchy(0,5);
+  plantInterceptSD~cauchy(0,5);
+  plantSlopeSD~cauchy(0,5);
+  slope~normal(0, 10);
+  intercept~normal(0, 10);
   // vectorized prediction
   ypred= intercept[stage] +
     yearInterceptEffect[year] +
     plantInterceptEffect[plant] +
-  Pods*slope + Pods .* plantSlopeEffect[plant];
+    Pods*slope + Pods .* plantSlopeEffect[plant];
   toF ~ bernoulli_logit(ypred);
 }
 
