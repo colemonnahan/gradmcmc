@@ -54,6 +54,13 @@ fit.empirical(model=m, params.jag=params.jags, inits=inits, data=data,
               lambda=lambda.vec, delta=delta, metric=metric, seeds=seeds,
               Nout=Nout)
 
+## library(coda)
+## library(shinystan)
+## stan.fit <- readRDS(file='fits/stan_nuts_diag_e_0.8_10_.RDS')
+## stan.fit <- as.shinystan(mcmc.list(as.mcmc(readRDS(file='sims.ind.RDS'))))
+## shinystan::launch_shinystan(stan.fit)
+
+
 message(paste('Finished with model:', m))
 setwd('../..')
 
