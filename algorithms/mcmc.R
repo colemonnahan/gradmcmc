@@ -1,20 +1,22 @@
 ### The two HMC algorithms below were taken from the R package TMB
-### (github.com/kaskr/adcomp) with permission, and modified slightly for
-### clarity. Their intended use is solely for exploration and should be
-### considered in beta form. Use Stan or TMB directly for inference on real
-### problems.
+### (github.com/kaskr/adcomp/TMB/mcmc.R) with permission, and modified
+### slightly for clarity. Their intended use is solely for exploration and
+### should be considered in beta form. Use Stan or TMB directly for
+### inference on real problems.
 
-## Generate a single leapfrog trajectory. See argument definitions below.
+## I made this one specifically for this file. It generates a single
+## leapfrog trajectory. See argument definitions below.
 leapfrog <- function(L, fn, gr, eps, init, r.cur, covar=NULL){
     if(!is.null(covar)){
-        fn2 <- function(theta) fn(chd %*% theta)
-        gr2 <- function(theta) {as.vector( t( gr(chd %*% theta) ) %*% chd )}
+        fn2 <- function(theta) {-fn(t(chd %*% theta))}
+        gr2 <- function(theta) {-as.vector( t( gr(chd %*% theta) ) %*% chd )}
         chd <- t(chol(covar))               # lower triangular Cholesky decomp.
         chd.inv <- solve(chd)               # inverse
         theta.cur <- chd.inv %*% init
     } else {
         theta.cur <- init
-        fn2 <- fn; gr2 <- gr
+        fn2 <- function(x) -fn(x)
+        gr2 <- function(x) -gr(x)
     }
     step <- function(theta, r, eps){
         r <- r+eps/2*gr2(theta)
@@ -50,6 +52,178 @@ leapfrog <- function(L, fn, gr, eps, init, r.cur, covar=NULL){
                 eps=eps, K=c(K0,K), P=c(P0,P)))
 }
 
+## Copyright (C) 2015 Cole Monnahan
+## License: GPL-2
+
+#' [BETA VERSION] Draw samples from the posterior of a TMB model using a
+#' specified MCMC algorithm.
+#'
+#' @details This function is a top-level wrapper designed specifically to
+#' work with TMB models. There are several MCMC algorithms available for
+#' use. The user is responsible for specifying the model properly (priors,
+#' starting values, desired parameters fixed, etc.), as well as assessing
+#' the convergence and validity of the resulting samples (e.g., through the
+#' \code{coda} package) before making inference.
+#' @title MCMC sampling of TMB models
+#' @author Cole Monnahan
+#' @param obj A TMB model object.
+#' @param nsim The number of (dependent) samples to draw.
+#' @param params.init The initial parameter vector. The default of NULL
+#' signifies to use the starting values present in the model
+#' (i.e., \code{obj$par}).
+#' @param covar An optional covariance matrix which can be used to improve
+#' the efficiency of sampling. The lower Cholesky decomposition of this
+#' matrix is used to transform the parameter space. If the posterior is
+#' approximately multivariate normal and \code{covar} approximates the
+#' covariance, then the transformed parameter space will be close to
+#' multivariate standard normal. In this case the algorithm will be more
+#' efficient, but there will be overhead in the matrix calculations which
+#' need to be done at each step. The default of NULL specifies to not do
+#' this transformation.
+#' @param algorithm A string specifiying an algorithm. Currently supported
+#' are: \itemize{
+#' \item{"RWM"}{the random walk Metropolis sampler}
+#' \item{"HMC"}{the Hamiltonian sampler (see Neal 2011)}
+#' \item{"NUTS"}{the No-U-Turn sampler (see Hoffman and Gelman 2014)}
+#' }
+#' These algorithms require different arguments; see their help files for more information.
+#' @param diagnostic Whether to return diagnostic information about
+#' chain. See individual algorithm for more information.
+#' @param ... Further arguments to be passed to the algorithm. See help
+#' files for the samplers for further arguments.
+#' @return If \code{diagnostic} is \code{FALSE}, returns a data frame with
+#' posterior samples. Otherwise it returns a list containing the samples
+#' and properties of the sampler useful for diagnosing behavior and
+#' efficiency.
+#' @example inst/examples/mcmc_examples.R
+#' @seealso \code{\link{run_mcmc.hmc}}, \code{\link{run_mcmc.nuts}}, \code{\link{run_mcmc.rwm}}
+run_mcmc <- function(obj, nsim, algorithm, params.init=NULL, covar=NULL, diagnostic=FALSE, ...){
+    ## Initialization for all algorithms
+    algorithm <- match.arg(algorithm, choices=c("HMC", "NUTS", "RWM"))
+    fn <- function(x) {
+        z <- -obj$fn(x)
+        if(is.nan(z)){
+            warning(paste("replacing NaN w/ Inf at:", paste(x, collapse=" ")))
+            z <- Inf
+        }
+        return(z)
+    }
+    gr <- function(x) {
+        z <- -as.vector(obj$gr(x))
+        if(any(is.nan(z))){
+            warning(paste("NaN gradient at:", paste(x, collapse=" ")))
+            z <- rep(0, length(x))
+           }
+        return(z)
+    }
+    obj$env$beSilent()                  # silence console output
+    ## argument checking
+    if(is.null(params.init)){
+        params.init <- obj$par
+    } else if(length(params.init) != length(obj$par)){
+        stop("params.init is wrong length")
+    }
+    ## Select and run the chain.
+    if(algorithm=="HMC")
+        time <- system.time(mcmc.out <-
+            run_mcmc.hmc(nsim=nsim, fn=fn, gr=gr, params.init=params.init, covar=covar,
+                     diagnostic=diagnostic, ...))
+    else if(algorithm=="NUTS")
+        time <- system.time(mcmc.out <-
+            run_mcmc.nuts(nsim=nsim, fn=fn, gr=gr, params.init=params.init, covar=covar,
+                      diagnostic=diagnostic, ...))
+    else if(algorithm=="RWM")
+        time <- system.time(mcmc.out <-
+            run_mcmc.rwm(nsim=nsim, fn=fn, params.init=params.init, covar=covar,
+                      diagnostic=diagnostic, ...))
+    ## Clean up returned output, a matrix if diag is FALSE, otherwise a list
+    if(!diagnostic){
+        mcmc.out <- as.data.frame(mcmc.out)
+        names(mcmc.out) <- names(obj$par)
+    } else {
+        mcmc.out$time <- as.numeric(time[3])        # grab the elapsed time
+        mcmc.out$par <- as.data.frame(mcmc.out$par)
+        names(mcmc.out$par) <- names(obj$par)
+    }
+    return(invisible(mcmc.out))
+}
+
+
+#' [BETA VERSION] Draw MCMC samples from a model posterior using a
+#' Random Walk Metropolis (RWM) sampler.
+#'
+#' @param nsim The number of samples to return.
+#' @param fn A function that returns the log of the posterior density.
+#' @param params.init A vector of initial parameter values.
+#' @param diagnostic Whether to return a list of diagnostic metrics about
+#' the chain. Useful for assessing efficiency and tuning chain.
+#' @details This algorithm does not yet contain adaptation of \code{alpha}
+#' so some trial and error may be required for efficient sampling.
+#' @param covar An optional covariance matrix which can be used to improve
+#' the efficiency of sampling. The lower Cholesky decomposition of this
+#' matrix is used to transform the parameter space. If the posterior is
+#' approximately multivariate normal and \code{covar} approximates the
+#' covariance, then the transformed parameter space will be close to
+#' multivariate standard normal. In this case the algorithm will be more
+#' efficient, but there will be overhead in the matrix calculations which
+#' need to be done at each step. The default of NULL specifies to not do
+#' this transformation.
+#' @param alpha The amount to scale the proposal, i.e,
+#' Xnew=Xcur+alpha*Xproposed where Xproposed is generated from a mean-zero
+#' multivariate normal. Varying \code{alpha} varies the acceptance rate.
+#' @return If \code{diagnostic} is FALSE (default), returns a matrix of
+#' \code{nsim} samples from the posterior. Otherwise returns a list
+#' containing samples ('par'), proposed samples ('par.proposed'), vector of
+#' which proposals were accepted ('accepted'), and the total function calls
+#' ('n.calls'), which for this algorithm is \code{nsim}
+#' @seealso \code{\link{run_mcmc}}, \code{\link{run_mcmc.nuts}}, \code{\link{run_mcmc.hmc}}
+run_mcmc.rwm <- function(nsim, fn, params.init, alpha=1, covar=NULL, diagnostic=FALSE){
+    accepted <- rep(0, length=nsim)
+    n.params <- length(params.init)
+    theta.out <- matrix(NA, nrow=nsim, ncol=n.params)
+    if(diagnostic) theta.proposed <- theta.out
+    ## If using covariance matrix and Cholesky decomposition, redefine
+    ## these functions to include this transformation. The algorithm will
+    ## work in the transformed space.
+    if(!is.null(covar)){
+        fn2 <- function(theta) fn(chd %*% theta)
+        chd <- t(chol(covar))               # lower triangular Cholesky decomp.
+        chd.inv <- solve(chd)               # inverse
+        theta.cur <- chd.inv %*% params.init
+    } else {
+        fn2 <- fn
+        theta.cur <- params.init
+    }
+    fn.cur <- fn2(theta.cur)
+    for(m in 1:nsim){
+        ## generate proposal
+        theta.new <- theta.cur + alpha*rnorm(n=n.params, mean=0, sd=1)
+        fn.new <- fn2(theta.new)
+        if(diagnostic) theta.proposed[m,] <- theta.new
+        if(log(runif(1))< fn.new-fn.cur){
+            ## accept
+            accepted[m] <- 1
+            theta.cur <- theta.out[m,] <- theta.new
+            fn.cur <- fn.new
+        } else {
+            ## do not accept
+            theta.out[m,] <- theta.cur
+        }
+    } # end of MCMC loop
+    ## Back transform parameters if covar is used
+    if(!is.null(covar)) {
+        theta.out <- t(apply(theta.out, 1, function(x) chd %*% x))
+        if(diagnostic)
+            theta.proposed <- t(apply(theta.proposed, 1, function(x) chd %*% x))
+    }
+    message(paste("Acceptance rate = ", round(mean(accepted),1)))
+    if(diagnostic){
+        theta.out <- list(par=theta.out, accepted=accepted,
+                         acceptance=mean(accepted), n.calls=nsim,
+                         par.proposed=theta.proposed)
+    }
+    return(theta.out)
+}
 
 #' [BETA VERSION] Draw MCMC samples from a model posterior using a
 #' Hamiltonian sampler.
@@ -101,7 +275,7 @@ leapfrog <- function(L, fn, gr, eps, init, r.cur, covar=NULL){
 #' containing samples ('par'), proposed samples ('par.proposed'), vector of
 #' which were accepted ('accepted'), and the total function and gradient
 #' calls ('n.calls'), which for this algorithm is \code{nsim*(L+2)}.
-hmc <- function(nsim, fn, gr, params.init, L, eps=NULL, covar=NULL,
+run_mcmc.hmc <- function(nsim, fn, gr, params.init, L, eps=NULL, covar=NULL,
                      delta=0.5, Madapt=NULL, diagnostic=FALSE){
     ## If using covariance matrix and Cholesky decomposition, redefine
     ## these functions to include this transformation. The algorithm will
@@ -262,7 +436,7 @@ hmc <- function(nsim, fn, gr, params.init, L, eps=NULL, covar=NULL,
 #' average \code{eps} ('epsbar') from the dual averaging algorithm if
 #' used (otherwise NULL).
 #' @seealso \code{\link{run_mcmc}}, \code{\link{run_mcmc.hmc}}, \code{\link{run_mcmc.rwm}}
-nuts <- function(nsim, fn, gr, params.init, max_doublings=8, eps=NULL, Madapt=NULL,
+run_mcmc.nuts <- function(nsim, fn, gr, params.init, max_doublings=4, eps=NULL, Madapt=NULL,
                       delta=0.5, covar=NULL, diagnostic=FALSE){
     ## If using covariance matrix and Cholesky decomposition, redefine
     ## these functions to include this transformation. The algorithm will
@@ -272,11 +446,11 @@ nuts <- function(nsim, fn, gr, params.init, max_doublings=8, eps=NULL, Madapt=NU
         gr2 <- function(theta) as.vector( t( gr(chd %*% theta) ) %*% chd )
         chd <- t(chol(covar))               # lower triangular Cholesky decomp.
         chd.inv <- solve(chd)               # inverse
-        theta.cur <- chd.inv %*% params.init
+        theta.cur <- as.vector(chd.inv %*% params.init)
     } else {
         fn2 <- fn; gr2 <- gr
         theta.cur <- params.init
-    }
+      }
     theta.out <- matrix(NA, nrow=nsim, ncol=length(theta.cur))
     ## how many steps were taken at each iteration, useful for tuning
     j.results <- rep(NA, len=nsim)
