@@ -12,14 +12,15 @@ main.dir <- 'C:/Users/Cole/gradmcmc/'
 setwd(main.dir)
 source("startup.R")
 Nout.ind <- 1000
-seeds <- c(1:10)
+set.seed(241)
+seeds <- sample(1:1e5, size=20)
 lambda.vec <- NULL
 metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ## Suppress JAGS and Stan output to file? Useful after debugging to clean
 ## up console and judge progress.
 sink <- TRUE
 version$version.string                  # R version 3.2.3
-packageVersion('rstan')                 # 2.8.2
+packageVersion('rstan')                 # 2.11.1
 packageVersion('R2jags')                # 0.5.7
 packageVersion('rjags')                 # 4.4
 ### End of Step 0.
@@ -35,7 +36,7 @@ delta <- 0.8
 Nout <- 20000; Nthin <- 1; Nthin.ind <- 100
 ## cor is a factor for independent (0) or from wishart (1)
 cor.vec <- c(0,1)
-Npar.vec <- c(2, 5, 25, 50)
+Npar.vec <- c(2, 5, 15, 25, 50)
 source(paste0('models/',m,'/run_model.R'))
 
 ## Run MVN with varying correlations and a fixed Npar
@@ -43,7 +44,7 @@ m <- 'mvnc'
 verify <- FALSE
 delta <- 0.8
 Npar <- 5
-Nout <- 20000; Nthin <- 1; Nthin.ind <- 10
+Nout <- 20000; Nthin <- 1; Nthin.ind <- 100
 cor.vec <- c(0, .25, .5, .75, .85, .9, .95)
 Npar.vec <- c(2, 25, 50)
 source(paste0('models/',m,'/run_model.R'))
@@ -87,7 +88,7 @@ m <- 'swallows'
 source(paste0('models/',m,'/run_model.R'))
 
 ## Wildflower; from Bolker et al 2010
-Nout <- 1000; Nthin <- 1; Nthin.ind <- 500
+Nout <- 20000; Nthin <- 1; Nthin.ind <- 500
 verify <- FALSE
 delta <- .8
 m <- 'wildflower_nc'
