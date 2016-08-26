@@ -61,7 +61,9 @@ write.table(file='results/table_cor.csv', x=cor.table, sep=',',
             row.names=FALSE, col.names=TRUE)
 write.table(file='results/table_perf.csv', x=empirical.means.wide, sep=',',
             row.names=FALSE, col.names=TRUE)
-print(subset(empirical, platform=='jags' & seed ==1, select=c(model, Nsims)))
+print(subset(empirical, platform=='jags' & seed ==seeds[1],
+             select=c(model, Nsims)))
+print(ddply(empirical, .(model, platform), summarize, reps=length(seeds)))
 
 ## summarize adaptation info
 adapt_empirical<- ldply(list.files('results', pattern='adapt_empirical'), function(i)

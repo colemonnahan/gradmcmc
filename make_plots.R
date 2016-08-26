@@ -1,11 +1,15 @@
-m <- c('ss_logistic', 'redkite', 'growth_nc', 'swallows', 'mvnc','mvnd')
+m <- c('ss_logistic', 'wildflower_nc', 'redkite', 'growth_nc', 'swallows', 'mvnc','mvnd')
 ## g <- ggplot(subset(empirical, platform!='jags' & model %in% m)) +
 ##     geom_point(aes(delta.target, log(samples.per.time))) + facet_wrap('model', scales='free_y')
 ## ggsave('plots/optimal_delta.png', g, width=ggwidth, height=ggheight)
-g <- ggplot(empirical, aes(log(minESS), y=(minESS-minESS.coda)/minESS))  +
-    geom_point() + geom_abline(intercept=0,slope=0, col='red') +
-      facet_grid(platform~model, scales='free')# + ylim(0,1)+ xlim(0,1)
+
+
+g <- ggplot(empirical, aes(minESS, y=minESS.coda, group=platform, color=platform))  +
+  scale_x_log10()+scale_y_log10()+
+    geom_point() + geom_abline(intercept=0,slope=1)+
+      facet_wrap('model', scales='free')
 ggsave('plots/ESS_comparison.png', g, width=ggwidth, height=ggheight)
+
 g <- ggplot(empirical, aes(model, y=(minESS/Nsims)))  +
   geom_point()+ ylim(0,.5) + facet_wrap('platform') +
     theme(axis.text.x = element_text(angle = 90))
