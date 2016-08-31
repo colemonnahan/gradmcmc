@@ -20,7 +20,7 @@ metric <- c('unit_e', 'diag_e', 'dense_e')[2]
 ## up console and judge progress.
 sink <- TRUE
 version$version.string                  # R version 3.2.3
-packageVersion('rstan')                 # 2.11.1
+packageVersion('rstan')                 # 2.8.2
 packageVersion('R2jags')                # 0.5.7
 packageVersion('rjags')                 # 4.4
 ### End of Step 0.
