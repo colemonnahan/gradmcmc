@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.159596.svg)](https://doi.org/10.5281/zenodo.159596)
+
 This repository contains code for the paper:
 
 Monnahan, C.C., J.T. Thorson, T.A. Branch (In press). Faster estimation of
