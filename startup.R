@@ -1,6 +1,4 @@
-## This assumes the working directory is in the same folder as this file.
-## main.dir <- paste0(getwd(), '/')
-## load libraries and such
+## Load libraries, functions, and global variables
 library(coda)
 library(ggplot2)
 library(plyr)
@@ -121,6 +119,7 @@ run.chains <- function(model, seeds, Nout, Nthin=1, lambda, delta=.8,
         k <- k+1
       }}
     rm(fit.stan.nuts, sims.stan.nuts, perf.stan.nuts, adapt.nuts)
+### Currently turned off: feature to explore static HMC.
     ## if(!is.null(lambda)){
     ##   for(ilambda in lambda){
     ##     message(paste0('Starting stan.hmc',ilambda,' models'))
