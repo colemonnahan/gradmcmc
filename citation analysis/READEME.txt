@@ -1,0 +1,6 @@
+This folder contains the data and script used to create Fig. 1, the
+citation pattern of Bayesian software platforms.
+
+See the .xlsx sheet for the data, notes and details of methods. Save the
+main data sheet as a .csv and run the R script FindDupsGetCounts.r to
+calculate counts by year and make the file CountsByYear.csv.
